@@ -1,0 +1,9 @@
+[submodule "shell/.ops"]
+	path = shell/.ops
+	url = ../shellops.git
+[submodule "shell/.scan"]
+	path = shell/.scan
+	url = ../shell-scan.git
+[submodule "shell/.tree"]
+	path = shell/.tree
+	url = ../shell-tree.git

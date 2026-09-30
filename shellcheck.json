@@ -1,0 +1,12 @@
+{
+  "include": [
+    "shell/docs/api.sh",
+    "test/docs.bats"
+  ],
+  "exclude": [
+    "test/fixtures",
+    "shell/.ops",
+    "shell/.scan",
+    "shell/.tree"
+  ]
+}
