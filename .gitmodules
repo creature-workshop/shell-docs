@@ -1,9 +1,9 @@
 [submodule "shell/.ops"]
 	path = shell/.ops
-	url = ../shellops.git
+	url = https://gitlab.creature-workshop.com/ksoft/shellops.git
 [submodule "shell/.scan"]
 	path = shell/.scan
-	url = ../shell-scan.git
+	url = https://gitlab.creature-workshop.com/ksoft/libraries/shell-scan.git
 [submodule "shell/.tree"]
 	path = shell/.tree
-	url = ../shell-tree.git
+	url = https://gitlab.creature-workshop.com/ksoft/libraries/shell-tree.git
