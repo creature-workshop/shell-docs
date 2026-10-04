@@ -10,8 +10,6 @@ bats_require_minimum_version 1.5.0
 
 REPO="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
 export SHELLOPS_DIR="${SHELLOPS_DIR:-$REPO/shell/.ops}"
-export SHELL_SCAN_DIR="${SHELL_SCAN_DIR:-$REPO/shell/.scan}"
-export SHELL_TREE_DIR="${SHELL_TREE_DIR:-$REPO/shell/.tree}"
 export SHELL_DOCS_DIR="$REPO"
 export PROJ="$REPO"
 
@@ -21,6 +19,8 @@ load "$SHELLOPS_DIR/test/lib/bats-assert/load.bash"
 setup() {
   # shellcheck source=/dev/null
   . "$SHELLOPS_DIR/.envrc"
+  # The boot's pins name a shell-docs of their own; the tests run this one.
+  export SHELL_DOCS_DIR="$REPO"
   import "$REPO/shell/docs/api.sh"
   docs__docgen__load_all "$REPO/shell/docs"
 }

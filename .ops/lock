@@ -1,0 +1,36 @@
+{
+  "release": {
+    "latest": "0.1.0-dev.4",
+    "stable": "0.0.0"
+  },
+  "dependencies": {
+    "tools": {
+      "system": {
+        "git": {
+          "version": "latest"
+        },
+        "jq": {
+          "version": "1.7.1"
+        }
+      }
+    },
+    "git": {
+      "shell-goldens": {
+        "commit": "0bed61d8fa953740366e1418591d355e05f6e87a",
+        "scope": "dev-time",
+        "repository": "https://gitlab.creature-workshop.com/ksoft/libraries/shell-goldens.git"
+      },
+      "shell-scan": {
+        "commit": "da3ddd31b8dd705898931470d675ca4c35aaf730",
+        "scope": "dev-time",
+        "repository": "https://gitlab.creature-workshop.com/ksoft/libraries/shell-scan.git"
+      },
+      "shell-tree": {
+        "commit": "0d2e619720c88827da18005539225a6bf3b0b16d",
+        "scope": "dev-time",
+        "repository": "https://gitlab.creature-workshop.com/ksoft/libraries/shell-tree.git"
+      }
+    }
+  },
+  "features": {}
+}

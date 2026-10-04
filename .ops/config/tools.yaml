@@ -1,0 +1,22 @@
+# What this repository runs at dev time and in its pipeline, by channel (ADR
+# 000049 and ADR 000050 of shellops): jq, which the docusaurus system's
+# renderers run on, and under git the shell libraries the extractor reads:
+# shell-scan, the scanner, and shell-tree, the lowering, which every page
+# is derived through, and shell-goldens, which the tests run through.
+# `ops install` derives .ops/lock from this file. A pin moves in a merge
+# request of its own.
+system:
+  git:
+    version: latest
+  jq:
+    version: 1.7.1
+git:
+  shell-scan:
+    version: da3ddd31b8dd705898931470d675ca4c35aaf730
+    repository: https://gitlab.creature-workshop.com/ksoft/libraries/shell-scan.git
+  shell-tree:
+    version: 0d2e619720c88827da18005539225a6bf3b0b16d
+    repository: https://gitlab.creature-workshop.com/ksoft/libraries/shell-tree.git
+  shell-goldens:
+    version: 0bed61d8fa953740366e1418591d355e05f6e87a
+    repository: https://gitlab.creature-workshop.com/ksoft/libraries/shell-goldens.git

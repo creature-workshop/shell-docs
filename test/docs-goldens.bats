@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # The golden filesets of shell-docs, under test/fixtures/goldens/, run
-# through shell-goldens at shell/.golden. One fileset is one case, in a
+# through shell-goldens, the tree the lock pins. One fileset is one case, in a
 # directory of its own named for it: name.txt is its name and the test's
 # name in the log, about.txt explains it in plain words and prints when the
 # case fails, calls.txt lists the calls test/docs-transcript.sh runs, and
@@ -18,9 +18,16 @@ export SHELLOPS_DIR="${SHELLOPS_DIR:-$REPO/shell/.ops}"
 export SHELL_DOCS_DIR="$REPO"
 export PROJ="$REPO"
 
+# Booting shellops here, before the loads, exports SHELL_GOLDENS_DIR from
+# the pins of the lock, where the driver is loaded from. The pins name a
+# shell-docs of their own too; the tests run this one.
+# shellcheck source=/dev/null
+. "$SHELLOPS_DIR/.envrc"
+export SHELL_DOCS_DIR="$REPO"
+
 load "$SHELLOPS_DIR/test/lib/bats-support/load.bash"
 load "$SHELLOPS_DIR/test/lib/bats-assert/load.bash"
-load "$REPO/shell/.golden/shell/golden/bats.sh"
+load "$SHELL_GOLDENS_DIR/shell/golden/bats.sh"
 
 # The transcript of a fileset's calls: the script run on its calls file.
 transcript() {

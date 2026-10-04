@@ -1,7 +1,5 @@
 {
   "exclude": [
-    "shell/.golden",
-    "shell/.tree",
     "test/fixtures"
   ],
   "decisions": {

@@ -11,10 +11,7 @@
     "test/fixtures/docgen/plain.docgen.op.sh"
   ],
   "exclude": [
-    "shell/.golden",
     "shell/.ops",
-    "shell/.scan",
-    "shell/.tree",
     "test/fixtures"
   ]
 }
