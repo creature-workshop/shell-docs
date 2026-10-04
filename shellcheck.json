@@ -1,7 +1,11 @@
 {
   "include": [
+    "cli/docs",
     "shell/docs/api.sh",
-    "test/docs.bats"
+    "shell/docs/docgen.sh",
+    "shell/docs/docusaurus.docgen.op.sh",
+    "test/docs.bats",
+    "test/fixtures/docgen/plain.docgen.op.sh"
   ],
   "exclude": [
     "test/fixtures",
