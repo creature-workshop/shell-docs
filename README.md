@@ -14,10 +14,31 @@ definitions, which know no convention; this is the layer that does:
 
 `shell/docs/contract.jq` is the contract pass, and its header states the
 conventions it reads by: what a label means, what a name says, and how an
-`args:` section fills the contract. `shell/docs/page.jq` and
-`shell/docs/index.jq` render a page and an index from the derived tree,
-and read nothing else. `shell/docs/api.sh` wraps them as shell functions
-for a host that holds the three repositories.
+`args:` section fills the contract. `shell/docs/api.sh` wraps the
+extraction as `docs__tree` for a host that holds the three repositories,
+and adds `docs__write`, the reference of a whole library for one docs
+system: one page per module and an index under one directory.
+
+A docs system is a plugin of the `docgen` kind, `shell/docs/docgen.sh`,
+which names the roles: what a page and an index look like, and where each
+goes. `docusaurus` is the first, `shell/docs/docusaurus.docgen.op.sh`:
+markdown pages at the module's path with `.sh` as `.md`, rendered by the
+two jq programs under `shell/docs/docusaurus/`, and the index at
+`README.md`. Another docs system is another plugin; the extraction, the
+command and the catalog's job do not change.
+
+`cli/docs` is the entry point:
+
+    cli/docs [--list] [--system <name>] [--out <dir>] <library>
+
+It renders every module beneath `<library>` under `<dir>`, `.ops/docs` by
+default, for the system named, docusaurus by default, and reads shell-scan
+and shell-tree from `SHELL_SCAN_DIR` and `SHELL_TREE_DIR` when the host
+exports them, from the vendored copies here otherwise. It boots shellops,
+whose kind registry loads the systems. A host that takes shell-docs at a
+pin declares the two beside it; shellops' `ops docs` passes through to this
+command, and the catalog's `docusaurus` package runs it in a pipeline and
+keeps the pages as an artifact.
 
 ## The tree
 
@@ -48,7 +69,10 @@ The tests lower one fixture per label under `test/fixtures` and compare the
 tree with the one recorded beside it, and render the `greet` fixture to its
 page and the index.
 
-A repository takes this library at a pin. shellops and strata both do. `shell/.scan`, `shell/.tree` and `shell/.ops`
+A repository takes this library at a pin, and renders its reference
+through the catalog's `docusaurus` package or shellops' `ops docs`, which
+passes through to `cli/docs`; nothing docgen lives anywhere else (ADR.2).
+shellops and strata both do. `shell/.scan`, `shell/.tree` and `shell/.ops`
 vendor shell-scan, shell-tree and shellops, for this repository's own tests
 and lint, and for nothing else.
 
