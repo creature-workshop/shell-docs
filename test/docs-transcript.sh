@@ -21,6 +21,11 @@ The calls:
   write <system> <dir>             The files docs__write writes for <system>
                                    over the library under <dir>, each under a
                                    "--- <path>" line.
+  snapshot <system> <project> <version> <dir>
+                                   The files a snapshot of the pages rendered
+                                   for <system> over <dir> writes into an
+                                   empty site, as that version of the project,
+                                   each under a "--- <path>" line.
 HELP
 
 SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -65,6 +70,7 @@ run_call() {
     index) run_index $__run_call__rest ;;
     modules) run_modules $__run_call__rest ;;
     write) run_write $__run_call__rest ;;
+    snapshot) run_snapshot $__run_call__rest ;;
     *) GOLDEN_STATUS=127 ;;
   esac
 }
@@ -125,6 +131,22 @@ run_write() {
   cd "$GOLDEN_CALLS_DIR" || return 1
   golden__capture docs__write "$1" "$2" "$SCRATCH/out"
   cd "$OLDPWD" || return 1
+  list_written > "$SCRATCH/answer"
+  answer_from_scratch
+}
+
+: <<'FUN'
+Answers the files a snapshot of the pages rendered for <system> over the
+library under <dir> writes into an empty site, as the version <version> of
+the project <project>, each under a "--- <path>" line.
+FUN
+run_snapshot() {
+  rm -rf "$SCRATCH/pages" "$SCRATCH/out"
+  cd "$GOLDEN_CALLS_DIR" || return 1
+  golden__capture docs__write "$1" "$4" "$SCRATCH/pages"
+  cd "$OLDPWD" || return 1
+  mkdir -p "$SCRATCH/out"
+  golden__capture docs__docgen__snapshot "$1" "$SCRATCH/pages" "$SCRATCH/out" "$2" "$3"
   list_written > "$SCRATCH/answer"
   answer_from_scratch
 }

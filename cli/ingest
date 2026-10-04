@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+set -euo pipefail
+. "$SHELLOPS_DIR/.envrc"
+
+SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export SHELL_DOCS_DIR
+
+import \
+  "$SHELLOPS_DIR/lib/args/api.sh" \
+  "$SHELLOPS_DIR/lib/git/api.sh" \
+  "$SHELLOPS_DIR/lib/git/branches.sh" \
+  "$SHELLOPS_DIR/lib/git/commits.sh" \
+  "$SHELLOPS_DIR/lib/structs/api.sh"
+
+USAGE="$(cat <<HELP
+Commits rendered pages to a docs site's published branch as one version of
+one project, and pushes the branch: the ingest a source repository's
+publish job triggers in the site's repository. Runs in the site's checkout.
+The pages are written through cli/snapshot, so a version the branch already
+contains fails, except the trunk's, which is replaced on every run.
+
+Usage: cli/ingest [-h,--help] [--system <name>] [--branch <name>] [--trunk <version>] [--artifact <url>] --project <id> --version <version> --bot <name> --email <email> <pages>
+
+Arguments:
+  <pages>              The directory the pages were rendered under. With
+                       --artifact, their path inside the artifact.
+
+Flags:
+  --project <id>       The project the pages document, as the site names it.
+  --version <version>  The version the pages are filed under.
+  --bot <name>         The name the commit and the push are made as.
+  --email <email>      The bot's email on the commit.
+  --branch <name>      The branch the snapshots are committed on; published
+                       by default.
+  --trunk <version>    The version that is the trunk's snapshot and may be
+                       replaced; none by default.
+  --artifact <url>     A job artifact to download the pages from, with this
+                       job's CI_JOB_TOKEN; none by default.
+  --system <name>      The docs system; docusaurus by default.
+  -h, --help           Show this help text
+
+The branch is checked out at origin's tip in a worktree of its own, and the
+push carries a lease on that tip, so a branch another ingest moved
+meanwhile fails the push rather than losing its snapshot. A branch origin
+does not have yet starts from a root commit holding no files. When
+FORGE_ADMIN_TOKEN is set, the push carries it as the bot's token, the way
+shellops' git auth action sets it up; otherwise the push uses whatever
+credentials the checkout has.
+HELP
+)"
+
+SYSTEM=docusaurus
+BRANCH=published
+TRUNK=""
+ARTIFACT=""
+PROJECT=""
+VERSION=""
+BOT=""
+EMAIL=""
+PAGES=""
+
+main() {
+  parse_args "$@"
+  require_arguments
+  configure_bot
+
+  WORK="$(mktemp -d)"
+  trap 'remove_work' EXIT
+  download_artifact
+  checkout_published
+  write_snapshot
+  commit_snapshot
+  push_published
+
+  report
+}
+
+: <<'FUN'
+Collects the flags and the pages.
+FUN
+parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        log "$USAGE"
+        exit 0
+        ;;
+      --system) args__require_value "$@" || exit 1; SYSTEM="$2"; shift ;;
+      --branch) args__require_value "$@" || exit 1; BRANCH="$2"; shift ;;
+      --trunk) args__require_value "$@" || exit 1; TRUNK="$2"; shift ;;
+      --artifact) args__require_value "$@" || exit 1; ARTIFACT="$2"; shift ;;
+      --project) args__require_value "$@" || exit 1; PROJECT="$2"; shift ;;
+      --version) args__require_value "$@" || exit 1; VERSION="$2"; shift ;;
+      --bot) args__require_value "$@" || exit 1; BOT="$2"; shift ;;
+      --email) args__require_value "$@" || exit 1; EMAIL="$2"; shift ;;
+      -*)
+        error "ingest: unknown option: $1"
+        exit 1
+        ;;
+      *)
+        PAGES="$1"
+        ;;
+    esac
+    shift
+  done
+}
+
+: <<'FUN'
+Exits, naming them, when the project, the version, the bot, its email or
+the pages were not given.
+FUN
+require_arguments() {
+  if ! @defined "$PROJECT" || ! @defined "$VERSION" || ! @defined "$BOT" || ! @defined "$EMAIL" || ! @defined "$PAGES"; then
+    error "ingest: --project, --version, --bot, --email and the pages are required"
+    exit 1
+  fi
+}
+
+: <<'FUN'
+Sets the bot as the identity of the site repository's commits, so the root
+commit, the snapshot's commit and the push are the bot's whatever
+identity, if any, the machine has.
+FUN
+configure_bot() {
+  (cd "$PROJ" && "$SHELLOPS_DIR/action" git config "$BOT" "$EMAIL")
+}
+
+: <<'FUN'
+Downloads the artifact named with --artifact with this job's token and
+unpacks it under the work directory, so the pages are the path given
+inside it. Does nothing when no artifact was named: the pages are then a
+directory already on disk. Exits, naming the artifact, when the download
+fails.
+FUN
+download_artifact() {
+  if ! @defined "$ARTIFACT"; then
+    return 0
+  fi
+  if ! curl --silent --show-error --fail --location \
+    --header "JOB-TOKEN: ${CI_JOB_TOKEN:-}" \
+    --output "$WORK/artifact.zip" \
+    "$ARTIFACT"; then
+    error "ingest: the artifact at $ARTIFACT could not be downloaded"
+    exit 1
+  fi
+  mkdir -p "$WORK/artifact"
+  unzip -q "$WORK/artifact.zip" -d "$WORK/artifact"
+  PAGES="$WORK/artifact/$PAGES"
+}
+
+: <<'FUN'
+Checks the published branch's tip on origin out as a detached worktree
+under the work directory, so the snapshot is committed on exactly that
+commit and the site's checkout stays as it is. Keeps the tip, so the push
+can refuse a branch that moved. A branch origin does not have yet has no
+tip: the worktree then starts from a root commit holding no files.
+FUN
+checkout_published() {
+  TIP="$(git__remote_branch_tip origin "$BRANCH")"
+  if @defined "$TIP"; then
+    git__worktree_checkout "$WORK/published" "$TIP"
+  else
+    git__worktree_checkout "$WORK/published" "$(empty_root)"
+  fi
+}
+
+: <<'FUN'
+Prints a root commit holding no files, the start of a published branch
+origin does not have yet.
+FUN
+empty_root() {
+  git__commits__empty "docs: $BRANCH" ""
+}
+
+: <<'FUN'
+Writes the pages into the published branch's checkout as the version's
+snapshot, through cli/snapshot, which fails when the branch already
+contains the version and it is not the trunk's.
+FUN
+write_snapshot() {
+  "$SHELL_DOCS_DIR/cli/snapshot" \
+    --system "$SYSTEM" \
+    --site "$WORK/published" \
+    --project "$PROJECT" \
+    --version "$VERSION" \
+    --trunk "$TRUNK" \
+    "$PAGES"
+}
+
+: <<'FUN'
+Commits everything the snapshot wrote in the published branch's checkout
+as the bot, naming the project and the version, through shellops'
+git-commit, which commits nothing when the snapshot changed nothing.
+FUN
+commit_snapshot() {
+  (
+    cd "$WORK/published" \
+      && "$SHELLOPS_DIR/cli/git-commit" --all \
+        -m "docs: $PROJECT $VERSION"
+  )
+}
+
+: <<'FUN'
+Points the published branch on origin at the commit the worktree holds, as
+the bot, with a lease on the tip it was checked out from. Sets the bot's
+token up for the push first, when FORGE_ADMIN_TOKEN is set.
+FUN
+push_published() {
+  if @defined "${FORGE_ADMIN_TOKEN:-}"; then
+    (cd "$WORK/published" && "$SHELLOPS_DIR/action" git auth "$BOT" "$FORGE_ADMIN_TOKEN")
+  fi
+  git__force_move_branch \
+    origin \
+    "$BRANCH" \
+    "$TIP" \
+    "$(published_head)"
+}
+
+: <<'FUN'
+Prints the commit the published branch's worktree holds.
+FUN
+published_head() {
+  git -C "$WORK/published" rev-parse --verify HEAD
+}
+
+: <<'FUN'
+Removes the worktree and the work directory.
+FUN
+remove_work() {
+  git__worktree_remove "$WORK/published"
+  rm -rf "$WORK"
+}
+
+: <<'FUN'
+Says what was published and where.
+FUN
+report() {
+  println "ingest $PROJECT $VERSION: pushed $BRANCH"
+}
+
+main "$@"

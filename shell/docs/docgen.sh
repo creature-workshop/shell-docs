@@ -21,17 +21,27 @@ roles:
                            root, the module <module> renders to.
   @index_path              Prints the path, relative to the reference's
                            root, the index is written to.
+  @snapshot <pages> <site> <project> <version>
+                           Writes the pages under <pages> into the site
+                           checkout at <site> as the version <version> of
+                           the project <project>, in the system's own
+                           layout, replacing a snapshot of that version
+                           already there.
+  @has_version <site> <project> <version>
+                           Prints true when the site contains that version
+                           of the project, false otherwise.
 
 docusaurus is the first system, in docusaurus.docgen.op.sh beside this
 file. A host adopts another docs system by adding a plugin, and changes
-nothing else: docs__write and cli/docs take the system's name.
+nothing else: docs__write, cli/docs, cli/snapshot and cli/ingest take
+the system's name.
 MODULE
 
 # CONST: The roles the kind knows.
-__docs__docgen__ROLES="summary needs page index page_path index_path"
+__docs__docgen__ROLES="summary needs page index page_path index_path snapshot has_version"
 
 # CONST: The roles a system must answer.
-__docs__docgen__REQUIRED="summary page index page_path index_path"
+__docs__docgen__REQUIRED="summary page index page_path index_path snapshot has_version"
 
 : <<'PUB_FUN'
 Loads and registers the docs system <name>, whose plugin file has been
@@ -121,4 +131,26 @@ writes the index to.
 PUB_FUN
 docs__docgen__index_path() {
   kinds__call docgen "$1" index_path
+}
+
+: <<'PUB_FUN'
+Writes the pages under <pages> into the site checkout at <site> as the
+version <version> of the project <project>, in the layout of the system
+<name>, replacing a snapshot of that version already there.
+
+Usage: docs__docgen__snapshot <name> <pages> <site> <project> <version>
+PUB_FUN
+docs__docgen__snapshot() {
+  kinds__call docgen "$1" snapshot "$2" "$3" "$4" "$5"
+}
+
+: <<'PUB_FUN'
+Prints true when the site checkout at <site> contains the version <version>
+of the project <project> in the layout of the system <name>, false
+otherwise.
+
+Usage: docs__docgen__has_version <name> <site> <project> <version>
+PUB_FUN
+docs__docgen__has_version() {
+  kinds__call docgen "$1" has_version "$2" "$3" "$4"
 }

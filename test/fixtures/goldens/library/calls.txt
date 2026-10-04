@@ -1,3 +1,5 @@
 modules lib
 write docusaurus lib
 write plain lib
+snapshot docusaurus strata 0.1.0 lib
+snapshot plain strata 0.1.0 lib

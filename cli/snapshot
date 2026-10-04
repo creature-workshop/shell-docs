@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+. "$SHELLOPS_DIR/.envrc"
+
+SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export SHELL_DOCS_DIR
+
+import \
+  "$SHELLOPS_DIR/lib/args/api.sh" \
+  "$SHELL_DOCS_DIR/shell/docs/api.sh"
+
+USAGE="$(cat <<HELP
+Writes rendered pages into a docs site's checkout as one version of one
+project, in the layout of the docs system named. If the site already
+contains that version, the command fails, so a published version never
+changes. The one exception is the version named with --trunk, the trunk's
+snapshot, which is replaced on every run.
+
+Usage: cli/snapshot [-h,--help] [--system <name>] [--trunk <version>] --site <dir> --project <id> --version <version> <pages>
+
+Arguments:
+  <pages>              The directory the pages were rendered under, with
+                       the system's index in it.
+
+Flags:
+  --site <dir>         The site's checkout, which the snapshot is written
+                       into.
+  --project <id>       The project the pages document, as the site names it.
+  --version <version>  The version the pages are filed under.
+  --trunk <version>    The version that is the trunk's snapshot and may be
+                       replaced; none by default.
+  --system <name>      The docs system; docusaurus by default.
+  -h, --help           Show this help text
+HELP
+)"
+
+# CONST: Where the docs systems this repository ships are found.
+SYSTEMS="$SHELL_DOCS_DIR/shell/docs"
+
+SYSTEM=docusaurus
+SITE=""
+PROJECT=""
+VERSION=""
+TRUNK=""
+PAGES=""
+
+main() {
+  parse_args "$@"
+  docs__docgen__load_all "$SYSTEMS"
+  require_system
+  require_arguments
+  require_pages
+  refuse_a_published_version
+
+  docs__docgen__snapshot "$SYSTEM" "$PAGES" "$SITE" "$PROJECT" "$VERSION"
+
+  report
+}
+
+: <<'FUN'
+Collects the flags and the pages.
+FUN
+parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        log "$USAGE"
+        exit 0
+        ;;
+      --system) args__require_value "$@" || exit 1; SYSTEM="$2"; shift ;;
+      --site) args__require_value "$@" || exit 1; SITE="$2"; shift ;;
+      --project) args__require_value "$@" || exit 1; PROJECT="$2"; shift ;;
+      --version) args__require_value "$@" || exit 1; VERSION="$2"; shift ;;
+      --trunk) args__require_value "$@" || exit 1; TRUNK="$2"; shift ;;
+      -*)
+        error "snapshot: unknown option: $1"
+        exit 1
+        ;;
+      *)
+        PAGES="$1"
+        ;;
+    esac
+    shift
+  done
+}
+
+: <<'FUN'
+Exits, naming the systems there are, when SYSTEM is not a loaded docs
+system.
+FUN
+require_system() {
+  if @is_true "$(kinds__registered docgen "$SYSTEM")"; then
+    return 0
+  fi
+  error "snapshot: no docs system named $SYSTEM; the systems are $(@join "$(docs__docgen__names)" ', ')"
+  exit 1
+}
+
+: <<'FUN'
+Exits, naming it, when the site, the project, the version or the pages
+were not given, or the site is not a directory.
+FUN
+require_arguments() {
+  if ! @defined "$SITE" || ! @defined "$PROJECT" || ! @defined "$VERSION" || ! @defined "$PAGES"; then
+    error "snapshot: --site, --project, --version and the pages are required"
+    exit 1
+  fi
+  if [ ! -d "$SITE" ]; then
+    error "snapshot: $SITE is not a directory"
+    exit 1
+  fi
+}
+
+: <<'FUN'
+Exits, saying so, when the pages hold no index for the system: they were
+not rendered for it, or not at all.
+FUN
+require_pages() {
+  __require_pages__index="$(docs__docgen__index_path "$SYSTEM")"
+  if [ ! -f "$PAGES/$__require_pages__index" ]; then
+    error "snapshot: there is no $__require_pages__index under $PAGES; render the pages for $SYSTEM first"
+    exit 1
+  fi
+}
+
+: <<'FUN'
+Exits, naming the version, when the site already contains it and it is not
+the trunk's snapshot.
+FUN
+refuse_a_published_version() {
+  if [ "$VERSION" = "$TRUNK" ]; then
+    return 0
+  fi
+  if @is_true "$(docs__docgen__has_version "$SYSTEM" "$SITE" "$PROJECT" "$VERSION")"; then
+    error "snapshot: $PROJECT $VERSION is already in the site, and a published version is never replaced"
+    exit 1
+  fi
+}
+
+: <<'FUN'
+Says what was written and how many files it has.
+FUN
+report() {
+  __report__pages="$(find "$PAGES" -type f | wc -l | tr -d ' ')"
+  println "snapshot $PROJECT $VERSION: $__report__pages files into $SITE"
+}
+
+main "$@"

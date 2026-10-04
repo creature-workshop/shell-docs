@@ -21,18 +21,36 @@ and adds `docs__write`, the reference of a whole library for one docs
 system: one page per module and an index under one directory.
 
 A docs system is a plugin of the `docgen` kind, `shell/docs/docgen.sh`,
-which names the roles: what a page and an index look like, and where each
-goes. `docusaurus` is the first, `shell/docs/docusaurus.docgen.op.sh`:
-markdown pages at the module's path with `.sh` as `.md`, rendered by the
-two jq programs under `shell/docs/docusaurus/`, and the index at
-`README.md`. Another docs system is another plugin; the extraction, the
-command and the catalog's job do not change.
+which names the roles: what a page and an index look like, where each
+goes, and how rendered pages are written into a docs site's checkout as
+one version of a project. `docusaurus` is the first,
+`shell/docs/docusaurus.docgen.op.sh`: markdown pages at the module's path
+with `.sh` as `.md`, rendered by the two jq programs under
+`shell/docs/docusaurus/`, the index at `README.md`, and a snapshot in
+Docusaurus's own versioning layout. Another docs system is another plugin;
+the extraction, the commands and the catalog's job do not change.
 
 `cli/docs` is the entry point:
 
     cli/docs [--list] [--system <name>] [--out <dir>] <library>
 
-It renders every module beneath `<library>` under `<dir>`, `.ops/docs` by
+`cli/snapshot` writes rendered pages into a site's checkout as one version
+of one project. It fails when the site already contains that version,
+unless it is the trunk's, named with `--trunk`:
+
+    cli/snapshot [--system <name>] [--trunk <version>] --site <dir> --project <id> --version <version> <pages>
+
+`cli/ingest` is the step a source repository's publish job triggers in the
+site's repository: it checks the published branch out at origin's tip in a
+worktree, writes the pages through `cli/snapshot`, commits as the bot and
+pushes with a lease on that tip. With `--artifact` it downloads the pages
+from a job artifact first. The catalog's `docusaurus--ingest` member runs
+it, and the site repository only includes that member and sets its
+variables:
+
+    cli/ingest [--system <name>] [--branch <name>] [--trunk <version>] [--artifact <url>] --project <id> --version <version> --bot <name> --email <email> <pages>
+
+`cli/docs` renders every module beneath `<library>` under `<dir>`, `.ops/docs` by
 default, for the system named, docusaurus by default, and reads shell-scan
 and shell-tree from `SHELL_SCAN_DIR` and `SHELL_TREE_DIR` when the host
 exports them, from the vendored copies here otherwise. It boots shellops,
