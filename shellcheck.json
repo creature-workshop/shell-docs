@@ -1,6 +1,7 @@
 {
   "include": [
     "cli/docs",
+    "cli/snapshot",
     "shell/docs/api.sh",
     "shell/docs/docgen.sh",
     "shell/docs/docusaurus.docgen.op.sh",
