@@ -1,0 +1,1 @@
+VAR documents a private variable, and an enum declaration counts as an assignment

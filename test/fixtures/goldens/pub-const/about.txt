@@ -1,0 +1,1 @@
+Two public constants. One has a heredoc doc. The other has a one-line comment that continues on the next line.

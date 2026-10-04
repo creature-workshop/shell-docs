@@ -1,0 +1,1 @@
+greet.sh is the source shellops tests its own renderer with. This case lowers it as lib/greet.sh and prints its tree, the page docusaurus renders for it, and the docusaurus index over the module fixture and this one. The tree and the page must match what shellops records.

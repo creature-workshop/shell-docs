@@ -1,0 +1,2 @@
+tree fun.sh test/fixtures/goldens/label-disagrees/fun.sh
+tree pub-fun.sh test/fixtures/goldens/label-disagrees/pub-fun.sh

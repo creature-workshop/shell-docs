@@ -1,7 +1,8 @@
 {
   "exclude": [
-    "test/fixtures",
-    "shell/.tree"
+    "shell/.golden",
+    "shell/.tree",
+    "test/fixtures"
   ],
   "decisions": {
     "form": "one-page"

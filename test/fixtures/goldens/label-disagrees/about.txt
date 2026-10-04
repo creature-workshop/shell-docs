@@ -1,0 +1,1 @@
+In a library file, FUN names a function whose name starts with two underscores, and PUB_FUN one whose name does not. Both sources here break that, so the contract pass refuses them and names the function, the label and what the name says.

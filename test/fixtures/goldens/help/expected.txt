@@ -1,0 +1,2 @@
+## tree source.sh test/fixtures/goldens/help/source.sh
+{"role":"module","name":"test/fixtures/goldens/help/source.sh","payload":[{"role":"path","payload":"test/fixtures/goldens/help/source.sh"},{"role":"function","name":"main","payload":[{"role":"line","payload":12},{"role":"contract","payload":[{"role":"visibility","payload":"public"}]}]},{"role":"function","name":"parse_args","payload":[{"role":"line","payload":19},{"role":"doc","payload":"Collects the flags."},{"role":"contract","payload":[{"role":"visibility","payload":"private"}]}]}]}

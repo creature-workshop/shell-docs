@@ -1,0 +1,1 @@
+The library under lib/ has two modules, one of them a directory down. The case lists the modules, then writes the reference for docusaurus and for plain, the second system the test loads from test/fixtures/docgen, and prints every file it wrote.

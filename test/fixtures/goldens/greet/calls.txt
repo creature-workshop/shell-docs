@@ -1,0 +1,3 @@
+tree source.sh lib/greet.sh
+page docusaurus source.sh lib/greet.sh
+index docusaurus ../module/source.sh source.sh

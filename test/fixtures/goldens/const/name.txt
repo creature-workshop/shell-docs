@@ -1,0 +1,1 @@
+CONST documents a private constant, and an assignment without a doc gets no node

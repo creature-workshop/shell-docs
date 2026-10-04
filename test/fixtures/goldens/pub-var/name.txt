@@ -1,0 +1,1 @@
+PUB_VAR documents a public variable, exported or not

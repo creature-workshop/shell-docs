@@ -7,3 +7,6 @@
 [submodule "shell/.tree"]
 	path = shell/.tree
 	url = https://gitlab.creature-workshop.com/ksoft/libraries/shell-tree.git
+[submodule "shell/.golden"]
+	path = shell/.golden
+	url = https://gitlab.creature-workshop.com/ksoft/libraries/shell-goldens.git

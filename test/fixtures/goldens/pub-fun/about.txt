@@ -1,0 +1,1 @@
+A function under a PUB_FUN doc is public. The lines of the doc's args section become the contract's args. A doc block with no definition under it attaches to nothing.

@@ -1,0 +1,1 @@
+An entrypoint has no file doc, since its usage is a HELP heredoc
