@@ -1,0 +1,1 @@
+A private variable under a VAR doc gets a node. An enum declared with a verb is read as an assignment and gets a node too.

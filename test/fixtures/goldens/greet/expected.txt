@@ -1,0 +1,47 @@
+## tree source.sh lib/greet.sh
+{"role":"module","name":"lib/greet.sh","payload":[{"role":"path","payload":"lib/greet.sh"},{"role":"reach","payload":"module"},{"role":"doc","payload":"Greetings, for the tree's own test."},{"role":"constant","name":"__greet__WORD","payload":[{"role":"line","payload":12},{"role":"doc","payload":"The word every greeting opens with."},{"role":"contract","payload":[{"role":"visibility","payload":"private"}]}]},{"role":"function","name":"greet","payload":[{"role":"line","payload":25},{"role":"doc","payload":"Prints a greeting to $1, with a \"quote\" and a \\ in it.\n\nargs:\n  $1  The name to greet, which may run on\n      to a second line\n  $@  Anything after it, ignored\n\nUsage: greet <name>"},{"role":"contract","payload":[{"role":"visibility","payload":"public"},{"role":"args","payload":[{"role":"arg","name":"$1","payload":[{"role":"meaning","payload":"The name to greet, which may run on to a second line"}]},{"role":"arg","name":"$@","payload":[{"role":"meaning","payload":"Anything after it, ignored"}]}]}]}]},{"role":"function","name":"__greet__lower","payload":[{"role":"line","payload":32},{"role":"doc","payload":"Lower-cases $1."},{"role":"contract","payload":[{"role":"visibility","payload":"private"}]}]},{"role":"function","name":"undocumented","payload":[{"role":"line","payload":36},{"role":"contract","payload":[{"role":"visibility","payload":"public"}]}]}]}
+## page docusaurus source.sh lib/greet.sh
+# lib/greet.sh (module)
+
+Greetings, for the tree's own test.
+
+## Public functions
+
+### `greet`
+
+Prints a greeting to $1, with a "quote" and a \ in it.
+
+args:
+  $1  The name to greet, which may run on
+      to a second line
+  $@  Anything after it, ignored
+
+Usage: greet <name>
+
+| Argument | Meaning |
+| --- | --- |
+| `$1` | The name to greet, which may run on to a second line |
+| `$@` | Anything after it, ignored |
+
+### `undocumented`
+
+*Undocumented.*
+
+## Private functions
+
+- `__greet__lower`
+
+## Constants and variables
+
+### `__greet__WORD` (private constant)
+
+The word every greeting opens with.
+## index docusaurus ../module/source.sh source.sh
+# Reference
+
+One page per library module, rendered from its tree.
+
+| Module | Reach | Summary |
+| --- | --- | --- |
+| [`../module/source.sh`](../module/source.md) | module | A module a consumer imports, for the tree's own test. The first doc block |
+| [`source.sh`](source.md) | module | Greetings, for the tree's own test. |

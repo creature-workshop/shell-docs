@@ -1,0 +1,1 @@
+Two public variables under PUB_VAR docs. One is exported. Both get a node.

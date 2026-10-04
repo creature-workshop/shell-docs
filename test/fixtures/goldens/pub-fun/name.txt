@@ -1,0 +1,1 @@
+PUB_FUN makes a function public, and its args section fills the contract

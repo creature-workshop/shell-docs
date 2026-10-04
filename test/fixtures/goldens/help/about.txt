@@ -1,0 +1,1 @@
+The first heredoc opens on HELP. That is the usage text, not a doc, so the file has no doc and no reach. Its functions keep plain names, and a FUN doc still marks one private.

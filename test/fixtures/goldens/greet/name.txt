@@ -1,0 +1,1 @@
+greet renders to the same page shellops' own test records

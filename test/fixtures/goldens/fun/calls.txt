@@ -1,0 +1,1 @@
+tree source.sh test/fixtures/goldens/fun/source.sh

@@ -1,0 +1,1 @@
+The function under the FUN doc has a name that starts with two underscores and is private. The two functions without a doc get their visibility from their names: one starts with two underscores and is private, the other does not and is public.

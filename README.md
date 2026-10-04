@@ -13,8 +13,9 @@ definitions, which know no convention; this is the layer that does:
       | jq -c -f "$SHELL_DOCS_DIR/shell/docs/contract.jq"
 
 `shell/docs/contract.jq` is the contract pass, and its header states the
-conventions it reads by: what a label means, what a name says, and how an
-`args:` section fills the contract. `shell/docs/api.sh` wraps the
+conventions it reads by: what a label means, what a name says, that the
+two must agree or the member is refused, and how an `args:` section fills
+the contract. `shell/docs/api.sh` wraps the
 extraction as `docs__tree` for a host that holds the three repositories,
 and adds `docs__write`, the reference of a whole library for one docs
 system: one page per module and an index under one directory.
@@ -65,15 +66,18 @@ may rely on.
 
 A public function with no `doc` is undocumented, and the page says so.
 
-The tests lower one fixture per label under `test/fixtures` and compare the
-tree with the one recorded beside it, and render the `greet` fixture to its
-page and the index.
+The tests are goldens, run through shell-goldens at `shell/.golden`: one
+fileset per case under `test/fixtures/goldens/`, one per label the contract
+pass reads, one for the `greet` fixture's tree, page and index, and one
+for a library rendered for docusaurus and for a second system, each with
+the transcript it must write recorded beside it. `test/docs.bats` covers
+the kind, the command and what a transcript cannot show.
 
 A repository takes this library at a pin, and renders its reference
 through the catalog's `docusaurus` package or shellops' `ops docs`, which
 passes through to `cli/docs`; nothing docgen lives anywhere else (ADR.2).
-shellops and strata both do. `shell/.scan`, `shell/.tree` and `shell/.ops`
-vendor shell-scan, shell-tree and shellops, for this repository's own tests
-and lint, and for nothing else.
+shellops and strata both do. `shell/.scan`, `shell/.tree`, `shell/.golden` and `shell/.ops` vendor
+shell-scan, shell-tree, shell-goldens and shellops, for this repository's
+own tests and lint, and for nothing else.
 
 The work is tracked in Linear on the SILT project, from STRATA-221.

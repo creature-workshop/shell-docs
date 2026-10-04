@@ -1,0 +1,1 @@
+PUB_CONST documents a public constant, as a heredoc or as a one-line comment

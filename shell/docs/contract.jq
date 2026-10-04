@@ -5,8 +5,12 @@
 #   awk ... -f scan.awk -f tree.awk <module> | jq -c -f contract.jq
 #
 # This is where the house conventions are read. A `PUB_` label makes a
-# member public and FUN, CONST or VAR private; a member with no label is
-# public unless its name starts with `__`. MODULE or FRAGMENT on the
+# member public and FUN, CONST or VAR private. In a library file, one with
+# a MODULE or FRAGMENT doc, the name must agree: a private member's name
+# starts with `__` and a public one's does not, and a label that disagrees
+# with the name is refused, naming the member. In an entrypoint, whose
+# functions keep plain names, the label decides. A member with no label is
+# judged by its name. MODULE or FRAGMENT on the
 # source's doc is the module's reach. An assignment gets a node only when
 # it carries a doc, as a constant when the last `__` segment of its name is
 # upper case and as a variable otherwise. A doc's `args:` section, one
@@ -38,11 +42,18 @@ def label_visibility:
 def name_visibility:
   if startswith("__") then "private" else "public" end;
 
-# The visibility of the member $name with the doc $doc: the label's when it
-# states one, else the name's.
-def visibility_of($name; $doc):
-  (if $doc == null then null else ($doc.name | label_visibility) end)
-  // ($name | name_visibility);
+# The visibility of the member $name with the doc $doc. In a library file
+# ($library) the name decides and the label must agree with it: FUN, CONST
+# and VAR name a member whose name starts with `__`, PUB_FUN, PUB_CONST and
+# PUB_VAR one whose name does not, and a label that disagrees is refused.
+# In an entrypoint the label decides, and the name when there is no label.
+def visibility_of($name; $doc; $library):
+  ($name | name_visibility) as $by_name
+  | (if $doc == null then null else ($doc.name | label_visibility) end) as $by_label
+  | if $by_label == null then $by_name
+    elif $library and $by_label != $by_name then
+      error("\($name): the doc opens on \($doc.name), but the name says \($by_name); FUN, CONST and VAR name a member whose name starts with __, and PUB_FUN, PUB_CONST and PUB_VAR one whose name does not")
+    else $by_label end;
 
 # True when a doc line heads a labelled reference section.
 def section_heading:
@@ -106,9 +117,9 @@ def args_of($text):
 
 # The contract of the member $name with the doc $doc: its visibility, then
 # its args when the doc has any.
-def contract($name; $doc):
+def contract($name; $doc; $library):
   {role: "contract", payload:
-    ([{role: "visibility", payload: visibility_of($name; $doc)}]
+    ([{role: "visibility", payload: visibility_of($name; $doc; $library)}]
      + (if $doc == null then [] else (args_of($doc.payload) as $args | if $args == [] then [] else [{role: "args", payload: $args}] end) end))};
 
 # The doc leaf of a member, or nothing when it has none.
@@ -117,23 +128,30 @@ def doc_leaf($doc):
 
 # A member of the reference's tree from a definition of the source's: a
 # function always, an assignment when documented.
-def member:
+def member($library):
   entry("doc") as $doc
   | (entry("line") | .payload) as $line
   | if .role == "function" then
-      {role: "function", name: .name, payload: ([{role: "line", payload: $line}] + doc_leaf($doc) + [contract(.name; $doc)])}
+      {role: "function", name: .name, payload: ([{role: "line", payload: $line}] + doc_leaf($doc) + [contract(.name; $doc; $library)])}
     elif .role == "assignment" and $doc != null then
       {role: (if (.name | constant_name) then "constant" else "variable" end), name: .name,
-       payload: ([{role: "line", payload: $line}] + doc_leaf($doc) + [contract(.name; $doc)])}
+       payload: ([{role: "line", payload: $line}] + doc_leaf($doc) + [contract(.name; $doc; $library)])}
     else empty end;
+
+# True when the source's doc opens on MODULE or FRAGMENT: the file is a
+# library file, whose members' names say what they are.
+def library:
+  entry("doc") as $doc
+  | $doc != null and ($doc.name == "MODULE" or $doc.name == "FRAGMENT");
 
 # The module's reach and doc from the source's doc, when its label is one
 # of the two a file doc opens on.
 def header:
   entry("doc") as $doc
-  | if $doc != null and ($doc.name == "MODULE" or $doc.name == "FRAGMENT")
+  | if library
     then [{role: "reach", payload: ($doc.name | ascii_downcase)}, {role: "doc", payload: $doc.payload}]
     else [] end;
 
-{role: "module", name: .name,
- payload: ([{role: "path", payload: .name}] + header + [.payload[] | select(.role == "function" or .role == "assignment") | member])}
+library as $library
+| {role: "module", name: .name,
+   payload: ([{role: "path", payload: .name}] + header + [.payload[] | select(.role == "function" or .role == "assignment") | member($library)])}

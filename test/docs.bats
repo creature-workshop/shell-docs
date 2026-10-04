@@ -1,12 +1,9 @@
 #!/usr/bin/env bats
-# Covers shell/docs: each directory under test/fixtures is one label the
-# contract pass reads, and lowering its source through shell-tree and the
-# pass gives the tree recorded beside it; the greet fixture, lowered under the path it has in shellops,
-# gives the tree and the page shellops' own goldens hold, and the index
-# over two trees lists both. The docgen kind loads docusaurus from beside
-# the library and a second system from a fixture, docs__write renders a
-# library, the greet fixture copied as lib/greet.sh, for either, and
-# cli/docs does the same from the command line.
+# Covers what the goldens (test/docs-goldens.bats) cannot: the default name
+# of a tree, the docgen kind loading docusaurus from beside the library,
+# docs__modules over a directory with files of every kind, docs__write
+# emptying its directory, and cli/docs from the command line. What a tree,
+# a page, an index and a library's render look like is the goldens'.
 
 bats_require_minimum_version 1.5.0
 
@@ -27,70 +24,10 @@ setup() {
   docs__docgen__load_all "$REPO/shell/docs"
 }
 
-# Asserts that the tree of the fixture named <label>, lowered under the path
-# its source has in this repository, is the one recorded in its tree.json.
-assert_tree() {
-  run docs__tree "$REPO/test/fixtures/$1/source.sh" "test/fixtures/$1/source.sh"
-  assert_success
-  assert_output "$(cat "$REPO/test/fixtures/$1/tree.json")"
-}
-
-@test "docs__tree: MODULE on the first doc block is the file's doc, and the reach is module" {
-  assert_tree module
-}
-
-@test "docs__tree: FRAGMENT on the first doc block makes the reach fragment" {
-  assert_tree fragment
-}
-
-@test "docs__tree: PUB_FUN makes a function public, its args section fills the contract, and a parted doc attaches to nothing" {
-  assert_tree pub-fun
-}
-
-@test "docs__tree: FUN makes a function private whatever its name, and an undocumented function is judged by its name" {
-  assert_tree fun
-}
-
-@test "docs__tree: PUB_CONST documents a public constant, as a heredoc or as a one-line comment with a continuation" {
-  assert_tree pub-const
-}
-
-@test "docs__tree: CONST documents a private constant, and an assignment with no doc gets no node" {
-  assert_tree const
-}
-
-@test "docs__tree: PUB_VAR documents a public variable, exported or not" {
-  assert_tree pub-var
-}
-
-@test "docs__tree: VAR documents a private variable, and an enum declaration is read as an assignment" {
-  assert_tree var
-}
-
-@test "docs__tree: HELP is a data heredoc the lowering reads past, so an entrypoint has no file doc" {
-  assert_tree help
-}
-
 @test "docs__tree: the path defaults to the source, and a source given with no path is named by it" {
-  run docs__tree "$REPO/test/fixtures/module/source.sh"
+  run docs__tree "$REPO/test/fixtures/goldens/module/source.sh"
   assert_success
-  assert_output --partial "\"name\":\"$REPO/test/fixtures/module/source.sh\""
-}
-
-@test "docs__tree and docs__page: the greet fixture lowers to the tree and renders to the page shellops' goldens hold" {
-  run docs__tree "$REPO/test/fixtures/greet/source.sh" lib/greet.sh
-  assert_success
-  assert_output "$(cat "$REPO/test/fixtures/greet/tree.json")"
-
-  run docs__page docusaurus "$REPO/test/fixtures/greet/tree.json"
-  assert_success
-  assert_output "$(cat "$REPO/test/fixtures/greet/page.md")"
-}
-
-@test "docs__index: one row per tree, in the order given, with the reach and the doc's first line" {
-  run docs__index docusaurus "$REPO/test/fixtures/module/tree.json" "$REPO/test/fixtures/greet/tree.json"
-  assert_success
-  assert_output "$(cat "$REPO/test/fixtures/index.md")"
+  assert_output --partial "\"name\":\"$REPO/test/fixtures/goldens/module/source.sh\""
 }
 
 # A library of one module under $BATS_TEST_TMPDIR: the greet fixture as
@@ -98,7 +35,7 @@ assert_tree() {
 # Moves into the directory and prints it.
 library_of_greet() {
   mkdir -p "$BATS_TEST_TMPDIR/lib"
-  cp "$REPO/test/fixtures/greet/source.sh" "$BATS_TEST_TMPDIR/lib/greet.sh"
+  cp "$REPO/test/fixtures/goldens/greet/source.sh" "$BATS_TEST_TMPDIR/lib/greet.sh"
   cd "$BATS_TEST_TMPDIR" || return 1
 }
 
@@ -124,7 +61,7 @@ library_of_greet() {
   assert_output "README.md"
 }
 
-@test "docs__write: renders the library for docusaurus to a page per module and the index recorded beside the greet fixture, emptying the directory first" {
+@test "docs__write: empties the directory first, so a module that is gone leaves no page" {
   library_of_greet
   mkdir -p out/lib
   touch out/lib/gone.md
@@ -132,21 +69,8 @@ library_of_greet() {
   docs__write docusaurus lib out
 
   assert [ ! -f out/lib/gone.md ]
-  run diff "$REPO/test/fixtures/greet/page.md" out/lib/greet.md
-  assert_success
-  run diff "$REPO/test/fixtures/greet/library.md" out/README.md
-  assert_success
-}
-
-@test "docs__write: a second docs system is a plugin and nothing else, so the same library renders for it to its own pages and index" {
-  library_of_greet
-  docs__docgen__load_all "$REPO/test/fixtures/docgen"
-
-  docs__write plain lib out
-
-  assert_equal "$(cat out/lib/greet.txt)" "page of lib/greet.sh"
-  assert_equal "$(cat out/INDEX.txt)" "lib/greet.sh"
-  assert [ ! -f out/README.md ]
+  assert [ -f out/lib/greet.md ]
+  assert [ -f out/README.md ]
 }
 
 @test "cli/docs: renders the library given under --out and says how many pages, lists the systems, and refuses a missing library and an unknown system" {
@@ -169,18 +93,4 @@ library_of_greet() {
   run "$REPO/cli/docs" --system mkdocs --out reference lib
   assert_failure
   assert_output --partial "no docs system named mkdocs; the systems are docusaurus"
-}
-
-@test "test/fixtures: every label fixture has a source and a recorded tree, and every recorded tree is covered above; docgen holds the second system" {
-  for dir in "$REPO"/test/fixtures/*/; do
-    label="$(basename "$dir")"
-    if [ "$label" = docgen ]; then
-      continue
-    fi
-    assert [ -f "$dir/source.sh" ]
-    assert [ -f "$dir/tree.json" ]
-    if [ "$label" != greet ]; then
-      assert grep -q "assert_tree $label\$" "$REPO/test/docs.bats"
-    fi
-  done
 }

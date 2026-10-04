@@ -1,0 +1,1 @@
+A private constant under a CONST doc gets a node. An assignment with no doc gets none.
