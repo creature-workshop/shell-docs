@@ -2,7 +2,10 @@
 set -euo pipefail
 . "$SHELLOPS_DIR/.envrc"
 
-SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# This command's own tree, whatever shell-docs the boot's pins export: a
+# host that pins shell-docs runs the copy the pins name, and that copy
+# names itself here.
+SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
 
 import "$SHELL_DOCS_DIR/shell/docs/api.sh"
@@ -25,7 +28,7 @@ Flags:
   -h, --help       Show this help text
 
 shell-scan and shell-tree are read from SHELL_SCAN_DIR and SHELL_TREE_DIR,
-or from the copies vendored here when those are unset.
+which shellops exports from the pins of the repository's lock.
 HELP
 )"
 
@@ -134,15 +137,12 @@ require_library() {
 }
 
 : <<'FUN'
-Exports the roots of shell-scan and shell-tree: the host's when it exports
-them, else this repository's vendored copies. Exits, saying what to
-declare, when neither is there.
+Exits, saying what to declare, when SHELL_SCAN_DIR and SHELL_TREE_DIR do not
+name the shell-scan and shell-tree trees: shellops exports both from the
+pins of the repository's lock when it boots.
 FUN
 require_scan_and_tree() {
-  SHELL_SCAN_DIR="${SHELL_SCAN_DIR:-$SHELL_DOCS_DIR/shell/.scan}"
-  SHELL_TREE_DIR="${SHELL_TREE_DIR:-$SHELL_DOCS_DIR/shell/.tree}"
-  export SHELL_SCAN_DIR SHELL_TREE_DIR
-  if [ ! -f "$SHELL_SCAN_DIR/shell/scan/scan.awk" ] || [ ! -f "$SHELL_TREE_DIR/shell/tree/tree.awk" ]; then
+  if [ ! -f "${SHELL_SCAN_DIR:-}/shell/scan/scan.awk" ] || [ ! -f "${SHELL_TREE_DIR:-}/shell/tree/tree.awk" ]; then
     error "docs: SHELL_SCAN_DIR and SHELL_TREE_DIR name the shell-scan and shell-tree trees; declare both beside shell-docs in the git channel of .ops/config/tools.yaml"
     exit 1
   fi

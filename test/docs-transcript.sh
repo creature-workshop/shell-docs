@@ -5,7 +5,7 @@ set -uo pipefail
 
 : <<'HELP'
 Writes the transcript of one golden fileset for test/docs-goldens.bats
-through the driver of shell-goldens, shell/.golden: every call in the calls
+through the driver of shell-goldens, the tree the lock pins: every call in the calls
 file under a "## " line, its answer below it, and "!! <status> <message>"
 when the call fails. This script supplies the hook that runs one call. A
 file a call names is beside the calls file unless absolute.
@@ -28,13 +28,12 @@ The calls:
                                    each under a "--- <path>" line.
 HELP
 
-SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# This repository's own tree, whatever shell-docs the boot's pins export.
+SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
-export SHELL_SCAN_DIR="${SHELL_SCAN_DIR:-$SHELL_DOCS_DIR/shell/.scan}"
-export SHELL_TREE_DIR="${SHELL_TREE_DIR:-$SHELL_DOCS_DIR/shell/.tree}"
 
 import "$SHELL_DOCS_DIR/shell/docs/api.sh"
-. "$SHELL_DOCS_DIR/shell/.golden/shell/golden/api.sh"
+. "$SHELL_GOLDENS_DIR/shell/golden/api.sh"
 
 main() {
   require_usage "$@"

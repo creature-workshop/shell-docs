@@ -52,10 +52,10 @@ variables:
 
 `cli/docs` renders every module beneath `<library>` under `<dir>`, `.ops/docs` by
 default, for the system named, docusaurus by default, and reads shell-scan
-and shell-tree from `SHELL_SCAN_DIR` and `SHELL_TREE_DIR` when the host
-exports them, from the vendored copies here otherwise. It boots shellops,
-whose kind registry loads the systems. A host that takes shell-docs at a
-pin declares the two beside it; shellops' `ops docs` passes through to this
+and shell-tree from `SHELL_SCAN_DIR` and `SHELL_TREE_DIR`, which shellops
+exports from the pins of the host's lock when it boots. The kind registry
+of shellops loads the systems. A host that takes shell-docs at a pin
+declares the two beside it; shellops' `ops docs` passes through to this
 command, and the catalog's `docusaurus` package runs it in a pipeline and
 keeps the pages as an artifact.
 
@@ -84,7 +84,7 @@ may rely on.
 
 A public function with no `doc` is undocumented, and the page says so.
 
-The tests are goldens, run through shell-goldens at `shell/.golden`: one
+The tests are goldens, run through shell-goldens, a tree the lock pins: one
 fileset per case under `test/fixtures/goldens/`, one per label the contract
 pass reads, one for the `greet` fixture's tree, page and index, and one
 for a library rendered for docusaurus and for a second system, each with
@@ -94,8 +94,10 @@ the kind, the command and what a transcript cannot show.
 A repository takes this library at a pin, and renders its reference
 through the catalog's `docusaurus` package or shellops' `ops docs`, which
 passes through to `cli/docs`; nothing docgen lives anywhere else (ADR.2).
-shellops and strata both do. `shell/.scan`, `shell/.tree`, `shell/.golden` and `shell/.ops` vendor
-shell-scan, shell-tree, shell-goldens and shellops, for this repository's
-own tests and lint, and for nothing else.
+shellops and strata both do. This repository vendors shellops at
+`shell/.ops` and declares shell-scan, shell-tree and shell-goldens in the
+git channel of `.ops/config/tools.yaml`, for its own tests and lint, and
+for nothing else; `.ops/lock` records the pins, and shellops fetches the
+trees and exports their roots when it boots.
 
 The work is tracked in Linear on the SILT project, from STRATA-221.

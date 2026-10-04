@@ -2,7 +2,10 @@
 set -euo pipefail
 . "$SHELLOPS_DIR/.envrc"
 
-SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# This command's own tree, whatever shell-docs the boot's pins export: a
+# host that pins shell-docs runs the copy the pins name, and that copy
+# names itself here.
+SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
 
 import \

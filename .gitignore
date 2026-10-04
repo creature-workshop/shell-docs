@@ -1,0 +1,5 @@
+# What shellops derives and nothing tracks: the trees and tools `ops install`
+# fetches under the cache and the compiled trees beside them. .ops/lock and
+# .ops/config are tracked.
+/.ops/cache/
+/.ops/__compiled__*
