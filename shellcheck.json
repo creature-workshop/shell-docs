@@ -1,10 +1,13 @@
 {
   "include": [
     "cli/docs",
+    "cli/ingest",
     "cli/snapshot",
     "shell/docs/api.sh",
     "shell/docs/docgen.sh",
     "shell/docs/docusaurus.docgen.op.sh",
+    "shell/site/repository.site.op.sh",
+    "shell/site/site.sh",
     "test/docs-goldens.bats",
     "test/docs-transcript.sh",
     "test/docs.bats",

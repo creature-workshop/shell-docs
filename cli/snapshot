@@ -19,7 +19,7 @@ contains that version, the command fails, so a published version never
 changes. The one exception is the version named with --trunk, the trunk's
 snapshot, which is replaced on every run.
 
-Usage: cli/snapshot [-h,--help] [--system <name>] [--trunk <version>] --site <dir> --project <id> --version <version> <pages>
+Usage: cli/snapshot [-h,--help] [--system <name>] [--trunk <version>] --site <dir> --project <id> --as-version <version> <pages>
 
 Arguments:
   <pages>              The directory the pages were rendered under, with
@@ -29,7 +29,7 @@ Flags:
   --site <dir>         The site's checkout, which the snapshot is written
                        into.
   --project <id>       The project the pages document, as the site names it.
-  --version <version>  The version the pages are filed under.
+  --as-version <v>     The version the pages are filed under.
   --trunk <version>    The version that is the trunk's snapshot and may be
                        replaced; none by default.
   --system <name>      The docs system; docusaurus by default.
@@ -73,7 +73,7 @@ parse_args() {
       --system) args__require_value "$@" || exit 1; SYSTEM="$2"; shift ;;
       --site) args__require_value "$@" || exit 1; SITE="$2"; shift ;;
       --project) args__require_value "$@" || exit 1; PROJECT="$2"; shift ;;
-      --version) args__require_value "$@" || exit 1; VERSION="$2"; shift ;;
+      --as-version) args__require_value "$@" || exit 1; VERSION="$2"; shift ;;
       --trunk) args__require_value "$@" || exit 1; TRUNK="$2"; shift ;;
       -*)
         error "snapshot: unknown option: $1"
@@ -105,7 +105,7 @@ were not given, or the site is not a directory.
 FUN
 require_arguments() {
   if ! @defined "$SITE" || ! @defined "$PROJECT" || ! @defined "$VERSION" || ! @defined "$PAGES"; then
-    error "snapshot: --site, --project, --version and the pages are required"
+    error "snapshot: --site, --project, --as-version and the pages are required"
     exit 1
   fi
   if [ ! -d "$SITE" ]; then

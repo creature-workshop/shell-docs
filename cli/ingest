@@ -2,81 +2,170 @@
 set -euo pipefail
 . "$SHELLOPS_DIR/.envrc"
 
-SHELL_DOCS_DIR="${SHELL_DOCS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# This command's own tree, whatever shell-docs the boot's pins export: a
+# host that pins shell-docs runs the copy the pins name, and that copy
+# names itself here.
+SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
 
 import \
   "$SHELLOPS_DIR/lib/args/api.sh" \
-  "$SHELLOPS_DIR/lib/git/api.sh" \
-  "$SHELLOPS_DIR/lib/git/branches.sh" \
-  "$SHELLOPS_DIR/lib/git/commits.sh" \
-  "$SHELLOPS_DIR/lib/structs/api.sh"
+  "$SHELLOPS_DIR/lib/http/api.sh" \
+  "$SHELLOPS_DIR/lib/self/config.sh" \
+  "$SHELLOPS_DIR/lib/structs/api.sh" \
+  "$SHELL_DOCS_DIR/shell/site/site.sh"
 
 USAGE="$(cat <<HELP
-Commits rendered pages to a docs site's published branch as one version of
-one project, and pushes the branch: the ingest a source repository's
-publish job triggers in the site's repository. Runs in the site's checkout.
-The pages are written through cli/snapshot, so a version the branch already
-contains fails, except the trunk's, which is replaced on every run.
+Puts a source repository's rendered pages into a docs site as one version
+of that project: the ingest the source's publish job triggers in the
+site's repository. Runs in the site's checkout. The pages are written
+through cli/snapshot, so a version the site already holds fails, except
+the trunk's, which is replaced on every run.
 
-Usage: cli/ingest [-h,--help] [--system <name>] [--branch <name>] [--trunk <version>] [--artifact <url>] --project <id> --version <version> --bot <name> --email <email> <pages>
+The source is what its render job left: its declarations under
+.ops/config, which name the project and where the pages are, and the
+pages themselves, under .ops/docs unless its docs declaration says
+otherwise. The site's own declarations name the system its pages are laid
+out for, the site system that keeps them and that system's settings, the
+trunk, and the bot; a flag overrides any of them.
+
+With --out, nothing is put: the site as it would be after the put is
+staged into the directory named instead, for a preview built from it.
+
+With a source pipeline, the source is the artifact of the render job in
+that pipeline of that project on the forge: the ingest finds the job and
+downloads its artifact by id, which the forge serves while the pipeline is
+still running. The project, the pipeline and the job are the source
+declaration of the site's docs declaration, `source` with project,
+pipeline and job, and a flag overrides each; the pipeline names the run,
+so it is what asks for this source, in place of --artifact or <source>.
+
+Usage: cli/ingest [-h,--help] [--system <name>] [--site <name>] [--branch <name>] [--trunk <version>] [--project <id>] [--bot-name <name>] [--bot-email <email>] [--out <dir>] --as-version <version> (--artifact <url> | --source-pipeline <id> [--source-project <id>] [--source-job <name>] | <source>)
 
 Arguments:
-  <pages>              The directory the pages were rendered under. With
-                       --artifact, their path inside the artifact.
+  <source>             The directory the source's render left, with its
+                       declarations and its pages inside.
 
 Flags:
-  --project <id>       The project the pages document, as the site names it.
-  --version <version>  The version the pages are filed under.
-  --bot <name>         The name the commit and the push are made as.
-  --email <email>      The bot's email on the commit.
-  --branch <name>      The branch the snapshots are committed on; published
-                       by default.
+  --as-version <v>     The version the pages are filed under.
+  --artifact <url>     A job artifact to download the source from, with this
+                       job's CI_JOB_TOKEN, in place of <source>.
+  --source-project <id>
+                       The project on the forge whose pipeline rendered the
+                       pages, by id; source.project of the site's docs
+                       declaration by default.
+  --source-pipeline <id>
+                       That project's pipeline with the render job, by id;
+                       source.pipeline of the declaration by default.
+  --source-job <name>  The render job's name, whose artifact is the source;
+                       source.job of the declaration by default.
+  --project <id>       The project the pages document, as the site names
+                       it; the source's manifest names it by default.
+  --site <name>        The site system; site.system of the site's docs
+                       declaration, else repository.
+  --branch <name>      The branch of the repository site; site.branch of
+                       the declaration, else published.
   --trunk <version>    The version that is the trunk's snapshot and may be
-                       replaced; none by default.
-  --artifact <url>     A job artifact to download the pages from, with this
-                       job's CI_JOB_TOKEN; none by default.
-  --system <name>      The docs system; docusaurus by default.
+                       replaced; site.trunk of the site's docs declaration,
+                       else none.
+  --bot-name <name>    The name the put is made as; the site's bot
+                       declaration names it by default.
+  --bot-email <email>  The bot's email; the site's bot declaration names it
+                       by default.
+  --out <dir>          Stage the site as it would be after the put into
+                       <dir> instead of putting; none by default.
+  --system <name>      The docs system; system of the site's docs
+                       declaration, else docusaurus.
   -h, --help           Show this help text
 
-The branch is checked out at origin's tip in a worktree of its own, and the
-push carries a lease on that tip, so a branch another ingest moved
-meanwhile fails the push rather than losing its snapshot. A branch origin
-does not have yet starts from a root commit holding no files. When
-FORGE_ADMIN_TOKEN is set, the push carries it as the bot's token, the way
-shellops' git auth action sets it up; otherwise the push uses whatever
-credentials the checkout has.
+The site systems are under shell/site; repository keeps the site on one
+branch, checked out as a worktree and pushed with a lease, so a put after
+another ingest moved the branch fails rather than losing its version.
+
+Environment:
+  CI_API_V4_URL        The forge's REST API, which the source pipeline's
+                       jobs are read from and the artifact is downloaded
+                       from.
+  CI_JOB_TOKEN         This job's token, which downloads the artifact.
+  FORGE_ADMIN_TOKEN    The bot's token, which reads the source pipeline's
+                       jobs and, when set, pushes the site.
 HELP
 )"
 
-SYSTEM=docusaurus
-BRANCH=published
-TRUNK=""
-ARTIFACT=""
-PROJECT=""
+# CONST: The docs system when neither a flag nor the site's docs declaration says.
+DEFAULT_SYSTEM=docusaurus
+
+# CONST: The site system when neither a flag nor the site's docs declaration says.
+DEFAULT_SITE=repository
+
+# CONST: Where a source's pages are when its docs declaration does not say.
+DEFAULT_PAGES=".ops/docs"
+
+# CONST: Where the site systems this repository ships are found.
+SITES="$SHELL_DOCS_DIR/shell/site"
+
+SYSTEM=""
+SITE=""
+SETTINGS=""
 VERSION=""
+ARTIFACT=""
+SOURCE_PROJECT=""
+SOURCE_PIPELINE=""
+SOURCE_JOB=""
+SOURCE=""
+PROJECT=""
+BRANCH=""
+TRUNK=""
 BOT=""
 EMAIL=""
+OUT=""
 PAGES=""
+TOKEN=""
+SOURCE_DECLARATION=""
 
 main() {
   parse_args "$@"
-  require_arguments
-  configure_bot
+  require_version
+  site__load_all "$SITES"
+  read_source_declaration
+  require_source
 
   WORK="$(mktemp -d)"
   trap 'remove_work' EXIT
+  locate_source
   download_artifact
-  checkout_published
+  read_source
+  read_site
+  require_site
+  checkout_site
   write_snapshot
-  commit_snapshot
-  push_published
 
-  report
+  if @defined "$OUT"; then
+    stage
+  else
+    put
+  fi
 }
 
 : <<'FUN'
-Collects the flags and the pages.
+Makes the files the site's content, as the bot, then says so.
+FUN
+put() {
+  site__put "$SITE" "$WORK/site" "$SETTINGS" "$TOKEN" "docs: $PROJECT $VERSION" "$BOT" "$EMAIL"
+  println "ingest $PROJECT $VERSION: put into the $SITE site"
+}
+
+: <<'FUN'
+Stages the site as it would be after the put into the directory --out
+names, then says so.
+FUN
+stage() {
+  site__stage "$SITE" "$WORK/site" "$OUT"
+  println "ingest $PROJECT $VERSION: staged the site with the snapshot in $OUT"
+}
+
+: <<'FUN'
+Collects the flags and the source.
 FUN
 parse_args() {
   while [ "$#" -gt 0 ]; do
@@ -86,19 +175,24 @@ parse_args() {
         exit 0
         ;;
       --system) args__require_value "$@" || exit 1; SYSTEM="$2"; shift ;;
+      --site) args__require_value "$@" || exit 1; SITE="$2"; shift ;;
+      --as-version) args__require_value "$@" || exit 1; VERSION="$2"; shift ;;
+      --artifact) args__require_value "$@" || exit 1; ARTIFACT="$2"; shift ;;
+      --source-project) args__require_value "$@" || exit 1; SOURCE_PROJECT="$2"; shift ;;
+      --source-pipeline) args__require_value "$@" || exit 1; SOURCE_PIPELINE="$2"; shift ;;
+      --source-job) args__require_value "$@" || exit 1; SOURCE_JOB="$2"; shift ;;
+      --project) args__require_value "$@" || exit 1; PROJECT="$2"; shift ;;
       --branch) args__require_value "$@" || exit 1; BRANCH="$2"; shift ;;
       --trunk) args__require_value "$@" || exit 1; TRUNK="$2"; shift ;;
-      --artifact) args__require_value "$@" || exit 1; ARTIFACT="$2"; shift ;;
-      --project) args__require_value "$@" || exit 1; PROJECT="$2"; shift ;;
-      --version) args__require_value "$@" || exit 1; VERSION="$2"; shift ;;
-      --bot) args__require_value "$@" || exit 1; BOT="$2"; shift ;;
-      --email) args__require_value "$@" || exit 1; EMAIL="$2"; shift ;;
+      --bot-name) args__require_value "$@" || exit 1; BOT="$2"; shift ;;
+      --bot-email) args__require_value "$@" || exit 1; EMAIL="$2"; shift ;;
+      --out) args__require_value "$@" || exit 1; OUT="$2"; shift ;;
       -*)
         error "ingest: unknown option: $1"
         exit 1
         ;;
       *)
-        PAGES="$1"
+        SOURCE="$1"
         ;;
     esac
     shift
@@ -106,31 +200,151 @@ parse_args() {
 }
 
 : <<'FUN'
-Exits, naming them, when the project, the version, the bot, its email or
-the pages were not given.
+Exits, saying so, when the version was not given.
 FUN
-require_arguments() {
-  if ! @defined "$PROJECT" || ! @defined "$VERSION" || ! @defined "$BOT" || ! @defined "$EMAIL" || ! @defined "$PAGES"; then
-    error "ingest: --project, --version, --bot, --email and the pages are required"
+require_version() {
+  if ! @defined "$VERSION"; then
+    error "ingest: --as-version is required"
     exit 1
   fi
 }
 
 : <<'FUN'
-Sets the bot as the identity of the site repository's commits, so the root
-commit, the snapshot's commit and the push are the bot's whatever
-identity, if any, the machine has.
+Reads the source declaration of the site's docs declaration, `source` with
+project, pipeline and job, for whichever of them no flag gave. A flag
+overrides each.
 FUN
-configure_bot() {
-  (cd "$PROJ" && "$SHELLOPS_DIR/action" git config "$BOT" "$EMAIL")
+read_source_declaration() {
+  SOURCE_DECLARATION="$(self__config__get docs '.source' "$(@obj)")"
+  SOURCE_PROJECT="$(flag_or_declared "$SOURCE_PROJECT" project)"
+  SOURCE_PIPELINE="$(flag_or_declared "$SOURCE_PIPELINE" pipeline)"
+  SOURCE_JOB="$(flag_or_declared "$SOURCE_JOB" job)"
+}
+
+: <<'FUN'
+Prints the flag's value $1 when the flag was given, else the source
+declaration's setting named $2, else nothing.
+FUN
+flag_or_declared() {
+  if @defined "$1"; then
+    println "$1"
+  else
+    @get "$SOURCE_DECLARATION" ".$2" ''
+  fi
+}
+
+: <<'FUN'
+Exits, saying so, when the source was not given or was given more than one
+way, or when a source pipeline comes without the project or the job's
+name.
+FUN
+require_source() {
+  if [ "$(sources_given)" -ne 1 ]; then
+    error "ingest: give --artifact <url> or the directory the source's render left, or the render job's pipeline with --source-pipeline, and only one of them"
+    exit 1
+  fi
+  if @is_true "$(source_pipeline_given)" && @is_false "$(source_pipeline_complete)"; then
+    error "ingest: the source pipeline needs the project and the job's name: give --source-project and --source-job, or source.project and source.job in the site's docs declaration"
+    exit 1
+  fi
+}
+
+: <<'FUN'
+Prints how many ways the source was given: --artifact, a source directory
+and the source pipeline's flags each count once.
+FUN
+sources_given() {
+  __sources_given__count=0
+  if @defined "$ARTIFACT"; then
+    __sources_given__count=$((__sources_given__count + 1))
+  fi
+  if @defined "$SOURCE"; then
+    __sources_given__count=$((__sources_given__count + 1))
+  fi
+  if @is_true "$(source_pipeline_given)"; then
+    __sources_given__count=$((__sources_given__count + 1))
+  fi
+  println "$__sources_given__count"
+}
+
+: <<'FUN'
+Prints true when a source pipeline is known, from --source-pipeline or
+the site's declaration, false otherwise. The pipeline names the run, so
+it alone says that the source is a render job's artifact.
+FUN
+source_pipeline_given() {
+  if @defined "$SOURCE_PIPELINE"; then
+    @true
+  else
+    @false
+  fi
+}
+
+: <<'FUN'
+Prints true when the source pipeline's project and job's name are known
+too, from a flag or the site's declaration, false otherwise.
+FUN
+source_pipeline_complete() {
+  if @defined "$SOURCE_PROJECT" && @defined "$SOURCE_JOB"; then
+    @true
+  else
+    @false
+  fi
+}
+
+: <<'FUN'
+Names the artifact to download when the source is a render job in a
+pipeline: reads that pipeline's jobs from the forge with the bot's token,
+takes the successful job with the source's job name, and sets ARTIFACT to
+that job's artifact by id. Does nothing when the source was given another
+way. Exits, saying what is missing, when the forge's API or the bot's
+token is not in the environment, the jobs cannot be read, or no successful
+job has the name.
+FUN
+locate_source() {
+  if @is_false "$(source_pipeline_given)"; then
+    return 0
+  fi
+  if ! @defined "${CI_API_V4_URL:-}" || ! @defined "${FORGE_ADMIN_TOKEN:-}"; then
+    error "ingest: the source pipeline is read through CI_API_V4_URL with FORGE_ADMIN_TOKEN; set both"
+    exit 1
+  fi
+  __locate_source__jobs="$(source_pipeline_jobs)" || exit 1
+  __locate_source__job="$(@find is_source_job "$__locate_source__jobs")"
+  if ! @defined "$__locate_source__job"; then
+    error "ingest: no successful job named $SOURCE_JOB in pipeline $SOURCE_PIPELINE of project $SOURCE_PROJECT"
+    exit 1
+  fi
+  ARTIFACT="$CI_API_V4_URL/projects/$SOURCE_PROJECT/jobs/$(@get "$__locate_source__job" '.id')/artifacts"
+}
+
+: <<'FUN'
+Prints the jobs of the source pipeline as the forge lists them, one page of
+up to 100. Fails, saying so, when they cannot be read.
+FUN
+source_pipeline_jobs() {
+  if ! http__get \
+    "$CI_API_V4_URL/projects/$SOURCE_PROJECT/pipelines/$SOURCE_PIPELINE/jobs?per_page=100" \
+    "$(@obj '.auth' "Bearer $FORGE_ADMIN_TOKEN")"; then
+    error "ingest: the jobs of pipeline $SOURCE_PIPELINE of project $SOURCE_PROJECT could not be read"
+    return 1
+  fi
+}
+
+: <<'FUN'
+Succeeds when the job $1 is a successful job with the name --source-job
+gave: the test @find runs over the pipeline's jobs, which reports through
+its exit status as @find asks.
+FUN
+is_source_job() {
+  [ "$(@get "$1" '.name')" = "$SOURCE_JOB" ] && [ "$(@get "$1" '.status')" = "success" ]
 }
 
 : <<'FUN'
 Downloads the artifact named with --artifact with this job's token and
-unpacks it under the work directory, so the pages are the path given
-inside it. Does nothing when no artifact was named: the pages are then a
-directory already on disk. Exits, naming the artifact, when the download
-fails.
+unpacks it under the work directory, which is then the source. Does
+nothing when a source directory was given instead. Exits, naming the
+artifact, when the download fails.
 FUN
 download_artifact() {
   if ! @defined "$ARTIFACT"; then
@@ -145,97 +359,121 @@ download_artifact() {
   fi
   mkdir -p "$WORK/artifact"
   unzip -q "$WORK/artifact.zip" -d "$WORK/artifact"
-  PAGES="$WORK/artifact/$PAGES"
+  SOURCE="$WORK/artifact"
 }
 
 : <<'FUN'
-Checks the published branch's tip on origin out as a detached worktree
-under the work directory, so the snapshot is committed on exactly that
-commit and the site's checkout stays as it is. Keeps the tip, so the push
-can refuse a branch that moved. A branch origin does not have yet has no
-tip: the worktree then starts from a root commit holding no files.
+Reads the source's declarations: the project is its manifest's name unless
+--project gave one, and the pages are under the path its docs declaration
+names, .ops/docs by default. Exits, saying what is missing, when the
+source is not a directory, names no project, or has no pages where it says.
 FUN
-checkout_published() {
-  TIP="$(git__remote_branch_tip origin "$BRANCH")"
-  if @defined "$TIP"; then
-    git__worktree_checkout "$WORK/published" "$TIP"
-  else
-    git__worktree_checkout "$WORK/published" "$(empty_root)"
+read_source() {
+  if [ ! -d "$SOURCE" ]; then
+    error "ingest: $SOURCE is not a directory"
+    exit 1
+  fi
+  if ! @defined "$PROJECT"; then
+    PROJECT="$(source_project)"
+  fi
+  if ! @defined "$PROJECT"; then
+    error "ingest: the source names no project: give --project, or a manifest under $SOURCE"
+    exit 1
+  fi
+  PAGES="$SOURCE/$(self__config__get docs '.pages' "$DEFAULT_PAGES" "$SOURCE")"
+  if [ ! -d "$PAGES" ]; then
+    error "ingest: the source has no pages at $PAGES; its docs declaration names where they are"
+    exit 1
   fi
 }
 
 : <<'FUN'
-Prints a root commit holding no files, the start of a published branch
-origin does not have yet.
+Prints the name the source's manifest declares, or nothing when the
+source has no manifest.
 FUN
-empty_root() {
-  git__commits__empty "docs: $BRANCH" ""
+source_project() {
+  self__config__get manifest '.name' '' "$SOURCE"
 }
 
 : <<'FUN'
-Writes the pages into the published branch's checkout as the version's
-snapshot, through cli/snapshot, which fails when the branch already
-contains the version and it is not the trunk's.
+Reads the site's declarations for what no flag gave: the docs system, the
+site system with its settings and the trunk from the docs declaration, the
+bot from the bot declaration. The systems are docusaurus and repository
+when nothing names them, the trunk is none, and a flag that names the
+branch is written into the settings. Exits, saying so, when nothing names
+the bot.
+FUN
+read_site() {
+  if ! @defined "$SYSTEM"; then
+    SYSTEM="$(self__config__get docs '.system' "$DEFAULT_SYSTEM")"
+  fi
+  SETTINGS="$(self__config__get docs '.site' "$(@obj)")"
+  if ! @defined "$SITE"; then
+    SITE="$(@get "$SETTINGS" '.system' "$DEFAULT_SITE")"
+  fi
+  if @defined "$BRANCH"; then
+    SETTINGS="$(@set "$SETTINGS" '.branch' "$BRANCH")"
+  fi
+  if ! @defined "$TRUNK"; then
+    TRUNK="$(@get "$SETTINGS" '.trunk' '')"
+  fi
+  if ! @defined "$BOT"; then
+    BOT="$(self__config__get bot '.name' '')"
+  fi
+  if ! @defined "$EMAIL"; then
+    EMAIL="$(self__config__get bot '.email' '')"
+  fi
+  if ! @defined "$BOT" || ! @defined "$EMAIL"; then
+    error "ingest: nothing names the bot: give --bot-name and --bot-email, or a bot declaration with name and email under $PROJ/.ops/config"
+    exit 1
+  fi
+}
+
+: <<'FUN'
+Exits, naming the systems there are, when SITE is not a loaded site
+system.
+FUN
+require_site() {
+  if @is_true "$(kinds__registered site "$SITE")"; then
+    return 0
+  fi
+  error "ingest: no site system named $SITE; the systems are $(@join "$(site__names)" ', ')"
+  exit 1
+}
+
+: <<'FUN'
+Makes the site's content present under the work directory and keeps the
+token the put refuses a moved site with. The bot is the repository's
+identity first, so a site that starts empty starts as the bot's too.
+FUN
+checkout_site() {
+  (cd "$PROJ" && "$SHELLOPS_DIR/action" git config "$BOT" "$EMAIL")
+  TOKEN="$(site__checkout "$SITE" "$WORK/site" "$SETTINGS")"
+}
+
+: <<'FUN'
+Writes the pages into the site's checkout as the version's snapshot,
+through cli/snapshot, which fails when the site already holds the version
+and it is not the trunk's.
 FUN
 write_snapshot() {
   "$SHELL_DOCS_DIR/cli/snapshot" \
     --system "$SYSTEM" \
-    --site "$WORK/published" \
+    --site "$WORK/site" \
     --project "$PROJECT" \
-    --version "$VERSION" \
+    --as-version "$VERSION" \
     --trunk "$TRUNK" \
     "$PAGES"
 }
 
 : <<'FUN'
-Commits everything the snapshot wrote in the published branch's checkout
-as the bot, naming the project and the version, through shellops'
-git-commit, which commits nothing when the snapshot changed nothing.
-FUN
-commit_snapshot() {
-  (
-    cd "$WORK/published" \
-      && "$SHELLOPS_DIR/cli/git-commit" --all \
-        -m "docs: $PROJECT $VERSION"
-  )
-}
-
-: <<'FUN'
-Points the published branch on origin at the commit the worktree holds, as
-the bot, with a lease on the tip it was checked out from. Sets the bot's
-token up for the push first, when FORGE_ADMIN_TOKEN is set.
-FUN
-push_published() {
-  if @defined "${FORGE_ADMIN_TOKEN:-}"; then
-    (cd "$WORK/published" && "$SHELLOPS_DIR/action" git auth "$BOT" "$FORGE_ADMIN_TOKEN")
-  fi
-  git__force_move_branch \
-    origin \
-    "$BRANCH" \
-    "$TIP" \
-    "$(published_head)"
-}
-
-: <<'FUN'
-Prints the commit the published branch's worktree holds.
-FUN
-published_head() {
-  git -C "$WORK/published" rev-parse --verify HEAD
-}
-
-: <<'FUN'
-Removes the worktree and the work directory.
+Removes the site's checkout and the work directory.
 FUN
 remove_work() {
-  git__worktree_remove "$WORK/published"
+  if [ -d "$WORK/site" ]; then
+    site__close "$SITE" "$WORK/site"
+  fi
   rm -rf "$WORK"
-}
-
-: <<'FUN'
-Says what was published and where.
-FUN
-report() {
-  println "ingest $PROJECT $VERSION: pushed $BRANCH"
 }
 
 main "$@"

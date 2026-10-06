@@ -8,35 +8,48 @@ set -euo pipefail
 SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
 
-import "$SHELL_DOCS_DIR/shell/docs/api.sh"
+import \
+  "$SHELLOPS_DIR/lib/self/config.sh" \
+  "$SHELL_DOCS_DIR/shell/docs/api.sh"
 
 USAGE="$(cat <<HELP
 Writes the reference of a shell library: one page per module and an index,
 rendered from the doc blocks by the docs system named, under .ops/docs by
 default.
 
-Usage: cli/docs [-h,--help] [--list] [--system <name>] [--out <dir>] <library>
+Usage: cli/docs [-h,--help] [--list] [--system <name>] [--out <dir>] [<library>]
 
 Arguments:
-  <library>        The directory the library's modules are under.
+  <library>        The directory the library's modules are under; the
+                   repository's docs declaration names it when left out.
 
 Flags:
-  --system <name>  The docs system; docusaurus by default.
-  --out <dir>      Where the pages go; .ops/docs by default. It is emptied
-                   first.
+  --system <name>  The docs system; system of the docs declaration, else
+                   docusaurus.
+  --out <dir>      Where the pages go; pages of the docs declaration, else
+                   .ops/docs. It is emptied first.
   --list           Print every docs system and what it renders for.
   -h, --help       Show this help text
 
-shell-scan and shell-tree are read from SHELL_SCAN_DIR and SHELL_TREE_DIR,
-which shellops exports from the pins of the repository's lock.
+The docs declaration is .ops/config/docs.yaml of the repository, with
+library, the directory of the shell library, pages, where its reference
+goes, and system, the docs system it is rendered for. shell-scan and shell-tree are read from SHELL_SCAN_DIR and
+SHELL_TREE_DIR, which shellops exports from the pins of the repository's
+lock.
 HELP
 )"
+
+# CONST: The docs system when neither a flag nor the docs declaration says.
+DEFAULT_SYSTEM=docusaurus
+
+# CONST: Where the pages go when neither a flag nor the docs declaration says.
+DEFAULT_PAGES=".ops/docs"
 
 # CONST: Where the docs systems this repository ships are found.
 SYSTEMS="$SHELL_DOCS_DIR/shell/docs"
 
-SYSTEM=docusaurus
-OUT=.ops/docs
+SYSTEM=""
+OUT=""
 LIBRARY=""
 FLAG_LIST="$(@false)"
 
@@ -47,6 +60,7 @@ main() {
     list_systems
     exit 0
   fi
+  read_declaration
   require_system
   require_library
   require_scan_and_tree
@@ -125,9 +139,26 @@ require_system() {
 Exits, saying so, when no library was given or the directory given does
 not exist.
 FUN
+: <<'FUN'
+Reads the repository's docs declaration for what no argument gave: the
+system, the library and where the pages go. The system is docusaurus and
+the pages go to .ops/docs when nothing names them.
+FUN
+read_declaration() {
+  if ! @defined "$SYSTEM"; then
+    SYSTEM="$(self__config__get docs '.system' "$DEFAULT_SYSTEM")"
+  fi
+  if ! @defined "$LIBRARY"; then
+    LIBRARY="$(self__config__get docs '.library' '')"
+  fi
+  if ! @defined "$OUT"; then
+    OUT="$(self__config__get docs '.pages' "$DEFAULT_PAGES")"
+  fi
+}
+
 require_library() {
   if ! @defined "$LIBRARY"; then
-    error "docs: name the library to render, the directory its modules are under"
+    error "docs: name the library to render, the directory its modules are under, or declare it as library in .ops/config/docs.yaml"
     exit 1
   fi
   if [ ! -d "$LIBRARY" ]; then
