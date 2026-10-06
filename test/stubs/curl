@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# A curl for the tests that answers from files instead of the network. The
+# URL is the argument that starts with http. A URL containing
+# CURL_STUB_MATCH is answered with the file CURL_STUB_BODY and the status
+# 200 in the shape http__request reads, the body then the status on its own
+# line, when -w asked for it. Every other URL fails the way curl --fail does
+# on a 404: exit 22. Every URL asked is appended to CURL_STUB_LOG.
+set -eu
+url=""
+status=""
+for arg in "$@"; do
+  case "$arg" in
+    http://*|https://*) url="$arg" ;;
+    -w|--write-out) status=$'\n200\n' ;;
+  esac
+done
+printf '%s\n' "$url" >> "${CURL_STUB_LOG:?}"
+case "$url" in
+  *"${CURL_STUB_MATCH:?}"*)
+    cat "${CURL_STUB_BODY:?}"
+    printf '%s' "$status"
+    ;;
+  *)
+    echo "curl: (22) The requested URL returned error: 404" >&2
+    exit 22
+    ;;
+esac

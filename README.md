@@ -30,25 +30,54 @@ with `.sh` as `.md`, rendered by the two jq programs under
 Docusaurus's own versioning layout. Another docs system is another plugin;
 the extraction, the commands and the catalog's job do not change.
 
-`cli/docs` is the entry point:
+`cli/docs` is the entry point. A repository that declares its library in
+`.ops/config/docs.yaml`, as `library`, with `pages` for where the reference
+goes and `system` for the docs system, runs it with no arguments:
 
-    cli/docs [--list] [--system <name>] [--out <dir>] <library>
+    cli/docs [--list] [--system <name>] [--out <dir>] [<library>]
 
 `cli/snapshot` writes rendered pages into a site's checkout as one version
 of one project. It fails when the site already contains that version,
 unless it is the trunk's, named with `--trunk`:
 
-    cli/snapshot [--system <name>] [--trunk <version>] --site <dir> --project <id> --version <version> <pages>
+    cli/snapshot [--system <name>] [--trunk <version>] --site <dir> --project <id> --as-version <version> <pages>
 
 `cli/ingest` is the step a source repository's publish job triggers in the
-site's repository: it checks the published branch out at origin's tip in a
-worktree, writes the pages through `cli/snapshot`, commits as the bot and
-pushes with a lease on that tip. With `--artifact` it downloads the pages
-from a job artifact first. The catalog's `docusaurus--ingest` member runs
-it, and the site repository only includes that member and sets its
-variables:
+site's repository. It reads the source as its render left it: the project
+from the source's manifest, and the pages from where its docs declaration
+says, `.ops/docs` by default. It reads the site's own declarations for the
+rest: `system`, `site` and `site.trunk` of `.ops/config/docs.yaml`, and
+the bot's `name` and `email` from `.ops/config/bot.yaml`; a flag overrides
+any of them. It checks the site out through its site system, writes the
+pages through `cli/snapshot`, and puts the result back as the bot. With
+`--artifact` it downloads the source from a job artifact first, and with
+a source pipeline it finds the render job in that pipeline of that project
+and downloads its artifact by id, which the forge serves while the pipeline
+is still running. The project, the pipeline and the job are `source` of the
+site's docs declaration, with `project`, `pipeline` and `job`, and
+`--source-project`, `--source-pipeline` and `--source-job` override them. With
+`--out <dir>` it puts nothing, and stages the site as it would be after
+the put into `<dir>` instead, which is how a site is built as a preview of
+a merge request's docs. The catalog's `docusaurus--ingest` member runs it,
+and the site repository only includes that member:
 
-    cli/ingest [--system <name>] [--branch <name>] [--trunk <version>] [--artifact <url>] --project <id> --version <version> --bot <name> --email <email> <pages>
+    cli/ingest [--system <name>] [--site <name>] [--branch <name>] [--trunk <version>] [--project <id>] [--bot-name <name>] [--bot-email <email>] [--out <dir>] --as-version <version> (--artifact <url> | --source-pipeline <id> [--source-project <id>] [--source-job <name>] | <source>)
+
+A site system is a plugin of the `site` kind, `shell/site/site.sh`, which
+names the roles: check the site's content out as files, put the files back
+as the site's content unless the site moved meanwhile, stage the files for
+a preview, and close the checkout. The docgen kind decides what the files
+look like; the site kind decides where they are kept, and knows nothing of
+their layout. `repository` is the first, `shell/site/repository.site.op.sh`:
+the site is one branch of the repository the command runs in, `site.branch`
+of the declaration, `published` by default, checked out as a worktree at
+origin's tip and pushed with a lease on that tip. A site kept through an
+API is another plugin, and `cli/ingest` does not change. The declaration:
+
+    site:
+      system: repository
+      branch: published
+      trunk: main
 
 `cli/docs` renders every module beneath `<library>` under `<dir>`, `.ops/docs` by
 default, for the system named, docusaurus by default, and reads shell-scan
