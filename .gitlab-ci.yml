@@ -19,8 +19,19 @@ workflow:
 # The test reads the scanner, the lowering and the goldens driver from the
 # trees the lock pins, which shellops fetches when it boots, so the test job
 # needs no submodule beyond shell/.ops. The base job's before_script
-# fetches bats-core and shell-logs under it.
+# fetches bats-core under it.
+#
+# shellops' .envrc sources shell-logs from its own nested submodule, and the
+# base job's first shellops command loads .envrc before it recurses. The
+# stock image has no git, so the job installs git, fetches that one
+# submodule, then runs the base before_script. shell-logs is public, so the
+# fetch needs no token.
 ksoft/shell/test:
   variables:
     GIT_SUBMODULE_STRATEGY: normal
     GIT_SUBMODULE_PATHS: shell/.ops
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends git ca-certificates > /dev/null
+    - git -C shell/.ops submodule update --init --depth 1 shell/.logs
+    - !reference [.shellops, before_script]

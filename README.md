@@ -130,3 +130,5 @@ for nothing else; `.ops/lock` records the pins, and shellops fetches the
 trees and exports their roots when it boots.
 
 The work is tracked in Linear on the SILT project, from STRATA-221.
+
+shell-docs is licensed under the [Apache License, Version 2.0](LICENSE).
