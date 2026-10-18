@@ -2,9 +2,11 @@
 set -euo pipefail
 . "$SHELLOPS_DIR/.envrc"
 
-# This command's own tree, whatever shell-docs the boot's pins export: a
-# host that pins shell-docs runs the copy the pins name, and that copy
-# names itself here.
+: <<'CONST'
+This command's own tree, whatever shell-docs the boot's pins export: a
+host that pins shell-docs runs the copy the pins name, and that copy
+names itself here.
+CONST
 SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
 
@@ -36,7 +38,7 @@ With a source pipeline, the source is the artifact of the render job in
 that pipeline of that project on the forge: the ingest finds the job and
 downloads its artifact by id, which the forge serves while the pipeline is
 still running. The project, the pipeline and the job are the source
-declaration of the site's docs declaration, `source` with project,
+declaration of the site's docs declaration, the key source with project,
 pipeline and job, and a flag overrides each; the pipeline names the run,
 so it is what asks for this source, in place of --artifact or <source>.
 

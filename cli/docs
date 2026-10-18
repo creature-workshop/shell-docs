@@ -2,9 +2,11 @@
 set -euo pipefail
 . "$SHELLOPS_DIR/.envrc"
 
-# This command's own tree, whatever shell-docs the boot's pins export: a
-# host that pins shell-docs runs the copy the pins name, and that copy
-# names itself here.
+: <<'CONST'
+This command's own tree, whatever shell-docs the boot's pins export: a
+host that pins shell-docs runs the copy the pins name, and that copy
+names itself here.
+CONST
 SHELL_DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SHELL_DOCS_DIR
 
@@ -136,10 +138,6 @@ require_system() {
 }
 
 : <<'FUN'
-Exits, saying so, when no library was given or the directory given does
-not exist.
-FUN
-: <<'FUN'
 Reads the repository's docs declaration for what no argument gave: the
 system, the library and where the pages go. The system is docusaurus and
 the pages go to .ops/docs when nothing names them.
@@ -156,6 +154,10 @@ read_declaration() {
   fi
 }
 
+: <<'FUN'
+Exits, saying so, when no library was given or the directory given does
+not exist.
+FUN
 require_library() {
   if ! @defined "$LIBRARY"; then
     error "docs: name the library to render, the directory its modules are under, or declare it as library in .ops/config/docs.yaml"
