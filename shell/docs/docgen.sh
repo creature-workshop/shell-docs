@@ -12,8 +12,12 @@ roles:
 
   @summary                 What the system renders for, in one line.
   @needs                   The programs the system runs, as a struct array.
-  @page <tree>             Prints the page of the module whose tree is in
-                           the file <tree>.
+  @page <tree> [<source>]  Prints the page of the module whose tree is in
+                           the file <tree>. <source> is the URL the
+                           module's source files are at for the version
+                           rendered, or nothing; a system that links a
+                           page to its source links this one to the
+                           module under it.
   @index <trees...>        Prints the index over the modules whose trees
                            are in the files <trees...>, one entry each, in
                            the order given.
@@ -93,12 +97,14 @@ docs__docgen__summary() {
 
 : <<'PUB_FUN'
 Prints the page the system <name> renders for the module whose tree is in
-the file <tree>.
+the file <tree>. <source> is the URL the module's source files are at for
+the version rendered, or nothing; a system that links a page to its
+source links this one to the module under it.
 
-Usage: docs__docgen__page <name> <tree>
+Usage: docs__docgen__page <name> <tree> [<source>]
 PUB_FUN
 docs__docgen__page() {
-  kinds__call docgen "$1" page "$2"
+  kinds__call docgen "$1" page "$2" "${3:-}"
 }
 
 : <<'PUB_FUN'

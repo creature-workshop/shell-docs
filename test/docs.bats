@@ -96,6 +96,24 @@ library_of_greet() {
   assert_output --partial "no docs system named mkdocs; the systems are docusaurus"
 }
 
+@test "cli/docs: links each page to its source under --source, else under the pipeline's project at its ref, and leaves the link out otherwise" {
+  library_of_greet
+
+  run "$REPO/cli/docs" --out reference --source https://forge.example/org/tool/-/blob/v1.0.0 lib
+  assert_success
+  assert_equal "$(sed -n 3p reference/lib/greet.md)" 'custom_edit_url: "https://forge.example/org/tool/-/blob/v1.0.0/lib/greet.sh"'
+
+  export CI_PROJECT_URL=https://forge.example/org/tool CI_COMMIT_REF_NAME=v2.0.0
+  run "$REPO/cli/docs" --out reference lib
+  assert_success
+  assert_equal "$(sed -n 3p reference/lib/greet.md)" 'custom_edit_url: "https://forge.example/org/tool/-/blob/v2.0.0/lib/greet.sh"'
+  unset CI_PROJECT_URL CI_COMMIT_REF_NAME
+
+  run "$REPO/cli/docs" --out reference lib
+  assert_success
+  assert_equal "$(sed -n 1,3p reference/lib/greet.md)" "$(printf -- '---\ntitle: "lib/greet.sh"\n---')"
+}
+
 # A site checkout under $BATS_TEST_TMPDIR with the greet library's pages
 # rendered for docusaurus beside it. Moves into the directory.
 site_and_pages() {
