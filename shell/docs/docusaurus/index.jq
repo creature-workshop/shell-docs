@@ -1,8 +1,11 @@
 # The reference's index page: every module's tree, given as one array, as a
 # raw markdown table (run with -r) linking each module's page, with its
-# reach and the first line of its doc.
+# reach and the first line of its doc, written as CommonMark as prose.jq
+# says.
 #
 # Input: an array of module nodes, in the order the pages are listed.
+
+include "prose";
 
 # The one payload entry with the role $role, or null.
 def entry($role):
@@ -10,7 +13,7 @@ def entry($role):
 
 # The first line of a module's doc, or a note when it has none.
 def summary:
-  entry("doc") | if . == null then "*Undocumented.*" else .payload | split("\n") | first end;
+  entry("doc") | if . == null then "*Undocumented.*" else .payload | split("\n") | first | placeholders end;
 
 # A module's reach, or a dash when its doc states none.
 def reach:

@@ -1,0 +1,2 @@
+page docusaurus source.sh lib/text.sh https://forge.example/org/tool/-/blob/v1.0.0
+index docusaurus source.sh

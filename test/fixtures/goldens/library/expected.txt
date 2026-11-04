@@ -12,6 +12,10 @@ One page per library module, rendered from its tree.
 | [`lib/deep/api.sh`](lib/deep/api.md) | module | A module one directory down, so the library's pages keep its path. |
 | [`lib/greet.sh`](lib/greet.md) | module | Greetings, for the tree's own test. |
 --- lib/deep/api.md
+---
+title: "lib/deep/api.sh"
+---
+
 # lib/deep/api.sh (module)
 
 A module one directory down, so the library's pages keep its path.
@@ -26,6 +30,10 @@ Prints its one argument.
 
 
 --- lib/greet.md
+---
+title: "lib/greet.sh"
+---
+
 # lib/greet.sh (module)
 
 Greetings, for the tree's own test.
@@ -37,11 +45,13 @@ Greetings, for the tree's own test.
 Prints a greeting to $1, with a "quote" and a \ in it.
 
 args:
-  $1  The name to greet, which may run on
-      to a second line
-  $@  Anything after it, ignored
+```
+$1  The name to greet, which may run on
+    to a second line
+$@  Anything after it, ignored
+```
 
-Usage: greet <name>
+Usage: greet `<name>`
 
 | Argument | Meaning |
 | --- | --- |
@@ -80,6 +90,10 @@ One page per library module, rendered from its tree.
 | [`lib/deep/api.sh`](lib/deep/api.md) | module | A module one directory down, so the library's pages keep its path. |
 | [`lib/greet.sh`](lib/greet.md) | module | Greetings, for the tree's own test. |
 --- strata_versioned_docs/version-0.1.0/lib/deep/api.md
+---
+title: "lib/deep/api.sh"
+---
+
 # lib/deep/api.sh (module)
 
 A module one directory down, so the library's pages keep its path.
@@ -94,6 +108,10 @@ Prints its one argument.
 
 
 --- strata_versioned_docs/version-0.1.0/lib/greet.md
+---
+title: "lib/greet.sh"
+---
+
 # lib/greet.sh (module)
 
 Greetings, for the tree's own test.
@@ -105,11 +123,13 @@ Greetings, for the tree's own test.
 Prints a greeting to $1, with a "quote" and a \ in it.
 
 args:
-  $1  The name to greet, which may run on
-      to a second line
-  $@  Anything after it, ignored
+```
+$1  The name to greet, which may run on
+    to a second line
+$@  Anything after it, ignored
+```
 
-Usage: greet <name>
+Usage: greet `<name>`
 
 | Argument | Meaning |
 | --- | --- |

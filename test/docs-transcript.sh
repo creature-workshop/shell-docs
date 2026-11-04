@@ -14,12 +14,15 @@ Usage: test/docs-transcript.sh <calls>
 
 The calls:
   tree <source> <path>             The tree of the module at <source>, named <path>.
-  page <system> <source> <path>    The page <system> renders for that tree.
+  page <system> <source> <path> [<url>]
+                                   The page <system> renders for that tree,
+                                   linked to its source under <url>.
   index <system> <source...>       The index <system> renders over the trees of
                                    the sources, each named as written.
   modules <dir>                    The modules docs__modules lists under <dir>.
-  write <system> <dir>             The files docs__write writes for <system>
-                                   over the library under <dir>, each under a
+  write <system> <dir> [<url>]     The files docs__write writes for <system>
+                                   over the library under <dir>, linked to
+                                   their sources under <url>, each under a
                                    "--- <path>" line.
   snapshot <system> <project> <version> <dir>
                                    The files a snapshot of the pages rendered
@@ -84,11 +87,11 @@ run_tree() {
 
 : <<'FUN'
 Answers the page <system> renders for the module at <source>, named
-<path>.
+<path>, linked to its source under <url> when one is given.
 FUN
 run_page() {
   golden__capture docs__tree "$(golden__file_of "$2")" "$3" > "$SCRATCH/page.tree.json"
-  golden__capture docs__page "$1" "$SCRATCH/page.tree.json" > "$SCRATCH/answer"
+  golden__capture docs__page "$1" "$SCRATCH/page.tree.json" "${4:-}" > "$SCRATCH/answer"
   answer_from_scratch
 }
 
@@ -123,12 +126,13 @@ run_modules() {
 
 : <<'FUN'
 Answers the files docs__write writes for <system> over the library under
-<dir>, each under a "--- <path>" line, in byte order of their paths.
+<dir>, linked to their sources under <url> when one is given, each under
+a "--- <path>" line, in byte order of their paths.
 FUN
 run_write() {
   rm -rf "$SCRATCH/out"
   cd "$GOLDEN_CALLS_DIR" || return 1
-  golden__capture docs__write "$1" "$2" "$SCRATCH/out"
+  golden__capture docs__write "$1" "$2" "$SCRATCH/out" "${3:-}"
   cd "$OLDPWD" || return 1
   list_written > "$SCRATCH/answer"
   answer_from_scratch

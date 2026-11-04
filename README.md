@@ -34,7 +34,7 @@ the extraction, the commands and the catalog's job do not change.
 `.ops/config/docs.yaml`, as `library`, with `pages` for where the reference
 goes and `system` for the docs system, runs it with no arguments:
 
-    cli/docs [--list] [--system <name>] [--out <dir>] [<library>]
+    cli/docs [--list] [--system <name>] [--out <dir>] [--source <url>] [<library>]
 
 `cli/snapshot` writes rendered pages into a site's checkout as one version
 of one project. It fails when the site already contains that version,
@@ -82,7 +82,13 @@ API is another plugin, and `cli/ingest` does not change. The declaration:
 `cli/docs` renders every module beneath `<library>` under `<dir>`, `.ops/docs` by
 default, for the system named, docusaurus by default, and reads shell-scan
 and shell-tree from `SHELL_SCAN_DIR` and `SHELL_TREE_DIR`, which shellops
-exports from the pins of the host's lock when it boots. The kind registry
+exports from the pins of the host's lock when it boots. With `--source`,
+the URL the library's files are at for the version rendered, each page
+links to its module's source under it; in a GitLab pipeline the project's
+files at the commit's ref are the source when the flag is left out. A
+docusaurus page opens on front matter with its title and that link, and
+writes a doc's text as CommonMark: a placeholder such as `<name>` in a
+code span, and an indented example in a fenced code block. The kind registry
 of shellops loads the systems. A host that takes shell-docs at a pin
 declares the two beside it; shellops' `ops docs` passes through to this
 command, and the catalog's `docusaurus` package runs it in a pipeline and

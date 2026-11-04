@@ -6,7 +6,12 @@ the roles mean): one markdown page per module at the module's path with
 .sh as .md, and the index at README.md, which Docusaurus takes as the
 landing page of the folder its sidebar is generated from. A page and the
 index are rendered by the two jq programs under docusaurus/, which read
-the tree and nothing else.
+the tree and nothing else. A page opens on front matter Docusaurus reads:
+its title, and, when the source is given, custom_edit_url, the module's
+source file under it, which the page's edit link opens. The text of a doc
+is written as CommonMark, as prose.jq under docusaurus/ says: a
+placeholder such as <name> in a code span, and an indented example in a
+fenced code block.
 
 A snapshot is Docusaurus's own versioning layout for a docs plugin
 instance whose id is the project's: the pages under
@@ -15,11 +20,14 @@ instance whose id is the project's: the pages under
 version at the front of <project>_versions.json, once.
 DOC
 
+# CONST: The directory of the jq programs, which prose.jq is included from.
+__docs__docusaurus__PROGRAMS="$SHELL_DOCS_DIR/shell/docs/docusaurus"
+
 # CONST: The page renderer, a jq program over one module's tree.
-__docs__docusaurus__PAGE="$SHELL_DOCS_DIR/shell/docs/docusaurus/page.jq"
+__docs__docusaurus__PAGE="$__docs__docusaurus__PROGRAMS/page.jq"
 
 # CONST: The index renderer, a jq program over the trees of every module.
-__docs__docusaurus__INDEX="$SHELL_DOCS_DIR/shell/docs/docusaurus/index.jq"
+__docs__docusaurus__INDEX="$__docs__docusaurus__PROGRAMS/index.jq"
 
 @docgen.docusaurus() {
   @summary() {
@@ -32,12 +40,19 @@ __docs__docusaurus__INDEX="$SHELL_DOCS_DIR/shell/docs/docusaurus/index.jq"
 
   @page() {
     # structs-lint: allow -- the renderer is a jq program over a tree file; no struct value is read
-    jq -r -f "$__docs__docusaurus__PAGE" "$1"
+    jq -r \
+      --arg source "${2:-}" \
+      -L "$__docs__docusaurus__PROGRAMS" \
+      -f "$__docs__docusaurus__PAGE" \
+      "$1"
   }
 
   @index() {
     # structs-lint: allow -- the renderer is a jq program over tree files; no struct value is read
-    jq -r -s -f "$__docs__docusaurus__INDEX" "$@"
+    jq -r -s \
+      -L "$__docs__docusaurus__PROGRAMS" \
+      -f "$__docs__docusaurus__INDEX" \
+      "$@"
   }
 
   @page_path() {

@@ -1,6 +1,8 @@
 #!/bin/sh
 
-import "$SHELL_DOCS_DIR/shell/docs/docgen.sh"
+import \
+  "$SHELLOPS_DIR/lib/structs/api.sh" \
+  "$SHELL_DOCS_DIR/shell/docs/docgen.sh"
 
 : <<'MODULE'
 The doc extractor as shell functions, for a host that holds the three
@@ -41,12 +43,14 @@ docs__tree() {
 
 : <<'PUB_FUN'
 Prints the page the docs system <system> renders for the module whose
-tree is in the file <tree>.
+tree is in the file <tree>. With <source>, the URL the module's source
+files are at for the version rendered, a system that links a page to its
+source links this one to the module under it.
 
-Usage: docs__page <system> <tree>
+Usage: docs__page <system> <tree> [<source>]
 PUB_FUN
 docs__page() {
-  docs__docgen__page "$1" "$2"
+  docs__docgen__page "$1" "$2" "${3:-}"
 }
 
 : <<'PUB_FUN'
@@ -83,62 +87,76 @@ Writes the reference of the library at <dir> for the docs system <system>
 under <out>: the page of every module at the path the system gives, and
 the index over them at the path the system gives, in the order
 docs__modules lists them. <out> is emptied first, so a module that is gone
-leaves no page behind.
+leaves no page behind. With <source>, the URL the library's files are at
+for the version rendered, a system that links a page to its source links
+each page to its module under it.
 
 args:
   $1  The docs system's name
   $2  The library's directory, relative to the current directory
   $3  The directory the pages go under
+  $4  The URL the library's files are at; none when left out
 PUB_FUN
 docs__write() {
   __docs__write__trees="$(mktemp -d)"
+  __docs__write__context="$(@obj \
+    '.system' "$1" \
+    '.library' "$2" \
+    '.out' "$3" \
+    '.trees' "$__docs__write__trees" \
+    '.source' "${4:-}"
+  )"
   rm -rf "$3"
   mkdir -p "$3"
-  __docs__write_pages "$1" "$2" "$3" "$__docs__write__trees"
+  __docs__write_pages "$__docs__write__context"
   __docs__write_index "$1" "$3" "$__docs__write__trees"
   rm -rf "$__docs__write__trees"
 }
 
 : <<'FUN'
-Writes the tree of each module of the library at <dir> under <trees>, and
-the page the system <system> renders for each under <out>.
+Writes the tree of each module of the context's library under its trees
+directory, and the page the context's system renders for each under its
+pages directory.
 
 args:
-  $1  The docs system's name
-  $2  The library's directory
-  $3  The directory the pages go under
-  $4  The directory the trees go under
+  $1  The context ({system, library, out, trees, source})
 FUN
 __docs__write_pages() {
-  __docs__write_pages__modules="$(docs__modules "$2")"
+  __docs__write_pages__library="$(@get "$1" '.library' '')"
+  __docs__write_pages__modules="$(docs__modules "$__docs__write_pages__library")"
   __docs__write_pages__n=0
   while IFS= read -r __docs__write_pages__module; do
     [ -n "$__docs__write_pages__module" ] || continue
     __docs__write_pages__n=$((__docs__write_pages__n + 1))
-    __docs__write_page "$1" "$__docs__write_pages__module" "$3" "$4" "$__docs__write_pages__n"
+    __docs__write_page "$1" "$__docs__write_pages__module" "$__docs__write_pages__n"
   done <<EOF_MODULES
 $__docs__write_pages__modules
 EOF_MODULES
 }
 
 : <<'FUN'
-Writes the tree of the module <module> under <trees>, numbered <n> so the
-trees sort in the modules' order, and the page the system <system>
-renders for it under <out>, at the path the system gives.
+Writes the tree of the module <module> under the context's trees
+directory, numbered <n> so the trees sort in the modules' order, and the
+page the context's system renders for it under its pages directory, at
+the path the system gives, linked to the module under the context's
+source when there is one.
 
 args:
-  $1  The docs system's name
+  $1  The context ({system, library, out, trees, source})
   $2  The module's path
-  $3  The directory the pages go under
-  $4  The directory the trees go under
-  $5  The module's number in the library's order
+  $3  The module's number in the library's order
 FUN
 __docs__write_page() {
-  __docs__write_page__tree="$(printf '%s/%06d.tree.json' "$4" "$5")"
-  __docs__write_page__page="$3/$(docs__docgen__page_path "$1" "$2")"
+  __docs__write_page__system="$(@get "$1" '.system' '')"
+  __docs__write_page__out="$(@get "$1" '.out' '')"
+  __docs__write_page__trees="$(@get "$1" '.trees' '')"
+  __docs__write_page__source="$(@get "$1" '.source' '')"
+  __docs__write_page__tree="$(printf '%s/%06d.tree.json' "$__docs__write_page__trees" "$3")"
+  __docs__write_page__page="$__docs__write_page__out/$(docs__docgen__page_path "$__docs__write_page__system" "$2")"
   docs__tree "$2" "$2" > "$__docs__write_page__tree"
   mkdir -p "$(dirname "$__docs__write_page__page")"
-  docs__page "$1" "$__docs__write_page__tree" > "$__docs__write_page__page"
+  docs__page "$__docs__write_page__system" "$__docs__write_page__tree" "$__docs__write_page__source" \
+    > "$__docs__write_page__page"
 }
 
 : <<'FUN'

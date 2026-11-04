@@ -19,7 +19,7 @@ Writes the reference of a shell library: one page per module and an index,
 rendered from the doc blocks by the docs system named, under .ops/docs by
 default.
 
-Usage: cli/docs [-h,--help] [--list] [--system <name>] [--out <dir>] [<library>]
+Usage: cli/docs [-h,--help] [--list] [--system <name>] [--out <dir>] [--source <url>] [<library>]
 
 Arguments:
   <library>        The directory the library's modules are under; the
@@ -30,6 +30,10 @@ Flags:
                    docusaurus.
   --out <dir>      Where the pages go; pages of the docs declaration, else
                    .ops/docs. It is emptied first.
+  --source <url>   The URL the library's files are at for the version
+                   rendered, which each page's edit link points into; in
+                   a GitLab pipeline, the project's files at the commit's
+                   ref when left out, and no link otherwise.
   --list           Print every docs system and what it renders for.
   -h, --help       Show this help text
 
@@ -52,6 +56,7 @@ SYSTEMS="$SHELL_DOCS_DIR/shell/docs"
 
 SYSTEM=""
 OUT=""
+SOURCE=""
 LIBRARY=""
 FLAG_LIST="$(@false)"
 
@@ -63,19 +68,20 @@ main() {
     exit 0
   fi
   read_declaration
+  read_source
   require_system
   require_library
   require_scan_and_tree
 
-  docs__write "$SYSTEM" "$LIBRARY" "$OUT"
+  docs__write "$SYSTEM" "$LIBRARY" "$OUT" "$SOURCE"
 
   report
 }
 
 : <<'FUN'
 Collects the flags and the library: SYSTEM is the docs system, OUT where
-the pages go, LIBRARY the directory rendered, FLAG_LIST whether to list the
-systems instead.
+the pages go, SOURCE the URL the library's files are at, LIBRARY the
+directory rendered, FLAG_LIST whether to list the systems instead.
 FUN
 parse_args() {
   while [ "$#" -gt 0 ]; do
@@ -102,6 +108,14 @@ parse_args() {
         ;;
       --out=*)
         OUT="${1#--out=}"
+        ;;
+      --source)
+        require_value "$@"
+        SOURCE="$2"
+        shift
+        ;;
+      --source=*)
+        SOURCE="${1#--source=}"
         ;;
       -*)
         error "docs: unknown option: $1"
@@ -151,6 +165,21 @@ read_declaration() {
   fi
   if ! @defined "$OUT"; then
     OUT="$(self__config__get docs '.pages' "$DEFAULT_PAGES")"
+  fi
+}
+
+: <<'FUN'
+Takes the pipeline's project and ref for the source when no flag named
+one: in a GitLab pipeline, CI_PROJECT_URL and CI_COMMIT_REF_NAME name the
+project and the tag or branch the pipeline runs on, and its files are at
+/-/blob/<ref> under the project. Outside one, the pages carry no edit link.
+FUN
+read_source() {
+  if @defined "$SOURCE"; then
+    return 0
+  fi
+  if @defined "${CI_PROJECT_URL:-}" && @defined "${CI_COMMIT_REF_NAME:-}"; then
+    SOURCE="$CI_PROJECT_URL/-/blob/$CI_COMMIT_REF_NAME"
   fi
 }
 
