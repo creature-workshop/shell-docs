@@ -27,8 +27,6 @@ A module one directory down, so the library's pages keep its path.
 Prints its one argument.
 
 ## Private functions
-
-
 --- lib/greet.md
 ---
 title: "lib/greet.sh"
@@ -105,8 +103,6 @@ A module one directory down, so the library's pages keep its path.
 Prints its one argument.
 
 ## Private functions
-
-
 --- strata_versioned_docs/version-0.1.0/lib/greet.md
 ---
 title: "lib/greet.sh"
@@ -149,7 +145,6 @@ Usage: greet `<name>`
 ### `__greet__WORD` (private constant)
 
 The word every greeting opens with.
-
 --- strata_versioned_sidebars/version-0.1.0-sidebars.json
 {
   "docs": [

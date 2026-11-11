@@ -66,7 +66,8 @@ library_of_greet() {
 }
 
 @test "docgen: docusaurus loads from beside the library, with its summary, and names its page and index paths" {
-  assert_equal "$(@get "$(docs__docgen__names)" '.[0]')" docusaurus
+  @get first_system "$(docs__docgen__names)" '.[0]'
+  assert_equal "$first_system" docusaurus
   run docs__docgen__summary docusaurus
   assert_output --partial "Docusaurus"
   run docs__docgen__page_path docusaurus shell/silt/get.sh

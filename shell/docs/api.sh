@@ -116,13 +116,13 @@ args:
 PUB_FUN
 docs__write() {
   __docs__write__trees="$(mktemp -d)"
-  __docs__write__context="$(@obj \
+  @obj __docs__write__context \
     '.system' "$1" \
     '.library' "$2" \
     '.out' "$3" \
     '.trees' "$__docs__write__trees" \
-    '.source' "${4:-}"
-  )"
+    '.source' "${4:-}" \
+    || return 1
   rm -rf "$3"
   mkdir -p "$3"
   __docs__write_pages "$__docs__write__context"
@@ -139,7 +139,7 @@ args:
   $1  The context ({system, library, out, trees, source})
 FUN
 __docs__write_pages() {
-  __docs__write_pages__library="$(@get "$1" '.library' '')"
+  @get __docs__write_pages__library "$1" '.library' ''
   __docs__write_pages__modules="$(docs__modules "$__docs__write_pages__library")"
   __docs__write_pages__n=0
   while IFS= read -r __docs__write_pages__module; do
@@ -164,10 +164,10 @@ args:
   $3  The module's number in the library's order
 FUN
 __docs__write_page() {
-  __docs__write_page__system="$(@get "$1" '.system' '')"
-  __docs__write_page__out="$(@get "$1" '.out' '')"
-  __docs__write_page__trees="$(@get "$1" '.trees' '')"
-  __docs__write_page__source="$(@get "$1" '.source' '')"
+  @get __docs__write_page__system "$1" '.system' ''
+  @get __docs__write_page__out "$1" '.out' ''
+  @get __docs__write_page__trees "$1" '.trees' ''
+  @get __docs__write_page__source "$1" '.source' ''
   __docs__write_page__tree="$(printf '%s/%06d.tree.json' "$__docs__write_page__trees" "$3")"
   __docs__write_page__page="$__docs__write_page__out/$(docs__docgen__page_path "$__docs__write_page__system" "$2")"
   docs__tree "$2" "$2" > "$__docs__write_page__tree"

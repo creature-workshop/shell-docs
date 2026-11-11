@@ -28,7 +28,8 @@ __site__repository__DEFAULT_BRANCH=published
   }
 
   @needs() {
-    @arr git
+    @arr __site__repository__needs__out git
+    println "$__site__repository__needs__out"
   }
 
   @checkout() {
@@ -55,7 +56,8 @@ __site__repository__DEFAULT_BRANCH=published
 Prints the branch the site's declaration <settings> names, or the default.
 FUN
 __site__repository__branch() {
-  @get "$1" '.branch' "$__site__repository__DEFAULT_BRANCH"
+  @get __site__repository__branch__out "$1" '.branch' "$__site__repository__DEFAULT_BRANCH"
+  println "$__site__repository__branch__out"
 }
 
 : <<'FUN'

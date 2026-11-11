@@ -15,13 +15,15 @@ DOC
 
   @page() {
     __docgen__plain__page__tree="$(cat "$1")" || return 1
-    println "page of $(@get "$__docgen__plain__page__tree" '.name' '')"
+    @get __docgen__plain__page__name "$__docgen__plain__page__tree" '.name' ''
+    println "page of $__docgen__plain__page__name"
   }
 
   @index() {
     for __docgen__plain__index__file in "$@"; do
       __docgen__plain__index__tree="$(cat "$__docgen__plain__index__file")" || return 1
-      @get "$__docgen__plain__index__tree" '.name' ''
+      @get __docgen__plain__index__name "$__docgen__plain__index__tree" '.name' ''
+      println "$__docgen__plain__index__name"
     done
   }
 
@@ -40,10 +42,7 @@ DOC
   }
 
   @has_version() {
-    if [ -d "$1/$2/$3" ]; then
-      @true
-    else
-      @false
-    fi
+    @succeeds __docgen__plain__has_version__out [ -d "$1/$2/$3" ]
+    println "$__docgen__plain__has_version__out"
   }
 }
