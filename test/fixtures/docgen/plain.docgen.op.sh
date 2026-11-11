@@ -14,13 +14,15 @@ DOC
   }
 
   @page() {
-    # structs-lint: allow -- a test fixture reads one field of a tree file
-    jq -r '"page of " + .name' "$1"
+    __docgen__plain__page__tree="$(cat "$1")" || return 1
+    println "page of $(@get "$__docgen__plain__page__tree" '.name' '')"
   }
 
   @index() {
-    # structs-lint: allow -- a test fixture reads one field of each tree file
-    jq -r '.name' "$@"
+    for __docgen__plain__index__file in "$@"; do
+      __docgen__plain__index__tree="$(cat "$__docgen__plain__index__file")" || return 1
+      @get "$__docgen__plain__index__tree" '.name' ''
+    done
   }
 
   @page_path() {

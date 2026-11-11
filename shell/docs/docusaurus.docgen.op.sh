@@ -5,11 +5,11 @@ Docusaurus, the first docs system of the docgen kind (docgen.sh says what
 the roles mean): one markdown page per module at the module's path with
 .sh as .md, and the index at README.md, which Docusaurus takes as the
 landing page of the folder its sidebar is generated from. A page and the
-index are rendered by the two jq programs under docusaurus/, which read
+index are rendered by the two awk programs under docusaurus/, which read
 the tree and nothing else. A page opens on front matter Docusaurus reads:
 its title, and, when the source is given, custom_edit_url, the module's
 source file under it, which the page's edit link opens. The text of a doc
-is written as CommonMark, as prose.jq under docusaurus/ says: a
+is written as CommonMark, as prose.awk under docusaurus/ says: a
 placeholder such as <name> in a code span, and an indented example in a
 fenced code block.
 
@@ -20,14 +20,26 @@ instance whose id is the project's: the pages under
 version at the front of <project>_versions.json, once.
 DOC
 
-# CONST: The directory of the jq programs, which prose.jq is included from.
+# CONST: The directory of the awk programs.
 __docs__docusaurus__PROGRAMS="$SHELL_DOCS_DIR/shell/docs/docusaurus"
 
-# CONST: The page renderer, a jq program over one module's tree.
-__docs__docusaurus__PAGE="$__docs__docusaurus__PROGRAMS/page.jq"
+# CONST: The page renderer, an awk program over one module's tree.
+__docs__docusaurus__PAGE="$__docs__docusaurus__PROGRAMS/page.awk"
 
-# CONST: The index renderer, a jq program over the trees of every module.
-__docs__docusaurus__INDEX="$__docs__docusaurus__PROGRAMS/index.jq"
+# CONST: The index renderer, an awk program over the list of every module's tree.
+__docs__docusaurus__INDEX="$__docs__docusaurus__PROGRAMS/index.awk"
+
+# CONST: The awk program that prints the trees in tree files as one JSON list, which the index renderer reads.
+__docs__docusaurus__TREES="$__docs__docusaurus__PROGRAMS/trees.awk"
+
+# CONST: The awk library that writes a doc's text as CommonMark, which both renderers are loaded after.
+__docs__docusaurus__PROSE="$__docs__docusaurus__PROGRAMS/prose.awk"
+
+# CONST: The awk library that reads the nodes of a tree, which both renderers are loaded after.
+__docs__docusaurus__NODES="$SHELL_DOCS_DIR/shell/docs/nodes.awk"
+
+# CONST: The awk library that reads one line of a doc's text, which prose.awk is loaded after.
+__docs__docusaurus__DOC_TEXT="$SHELL_DOCS_DIR/shell/docs/doc_text.awk"
 
 @docgen.docusaurus() {
   @summary() {
@@ -35,24 +47,17 @@ __docs__docusaurus__INDEX="$__docs__docusaurus__PROGRAMS/index.jq"
   }
 
   @needs() {
-    @arr jq
+    @arr awk
   }
 
   @page() {
-    # structs-lint: allow -- the renderer is a jq program over a tree file; no struct value is read
-    jq -r \
-      --arg source "${2:-}" \
-      -L "$__docs__docusaurus__PROGRAMS" \
-      -f "$__docs__docusaurus__PAGE" \
-      "$1"
+    __docusaurus_page__tree="$(cat "$1")" || return 1
+    __docs__docusaurus__render "$__docs__docusaurus__PAGE" "$__docusaurus_page__tree" "${2:-}"
   }
 
   @index() {
-    # structs-lint: allow -- the renderer is a jq program over tree files; no struct value is read
-    jq -r -s \
-      -L "$__docs__docusaurus__PROGRAMS" \
-      -f "$__docs__docusaurus__INDEX" \
-      "$@"
+    __docusaurus_index__trees="$(awk -f "$__docs__docusaurus__TREES" "$@")" || return 1
+    __docs__docusaurus__render "$__docs__docusaurus__INDEX" "$__docusaurus_index__trees" ''
   }
 
   @page_path() {
@@ -72,6 +77,28 @@ __docs__docusaurus__INDEX="$__docs__docusaurus__PROGRAMS/index.jq"
   @has_version() {
     @succeeds [ -d "$(__docs__docusaurus__version_dir "$1" "$2" "$3")" ]
   }
+}
+
+: <<'FUN'
+Prints what the renderer <program> writes for <trees>, the tree of one
+module or the list of every module's, as Markdown. <source> is the URL
+the module's source files are at for the version rendered, or nothing.
+
+args:
+  $1  The renderer, an awk program
+  $2  The trees, as JSON
+  $3  The source
+FUN
+__docs__docusaurus__render() {
+  @run_awk __docs__docusaurus__render__page \
+    "$1" \
+    "$2" \
+    --arg source "$3" \
+    --load "$__docs__docusaurus__NODES" \
+    --load "$__docs__docusaurus__DOC_TEXT" \
+    --load "$__docs__docusaurus__PROSE" \
+    || return 1
+  println "$__docs__docusaurus__render__page"
 }
 
 : <<'FUN'

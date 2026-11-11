@@ -9,10 +9,10 @@ definitions, which know no convention; this is the layer that does:
 
     awk -v path=<module path> \
       -f "$SHELL_SCAN_DIR/shell/scan/scan.awk" \
-      -f "$SHELL_TREE_DIR/shell/tree/tree.awk" <module> \
-      | jq -c -f "$SHELL_DOCS_DIR/shell/docs/contract.jq"
+      -f "$SHELL_TREE_DIR/shell/tree/tree.awk" <module>
 
-`shell/docs/contract.jq` is the contract pass, and its header states the
+`shell/docs/contract.awk` is the contract pass, an awk program that reads
+that tree through the structs library of shellops. Its header states the
 conventions it reads by: what a label means, what a name says, that the
 two must agree or the member is refused, and how an `args:` section fills
 the contract. `shell/docs/api.sh` wraps the
@@ -25,7 +25,7 @@ which names the roles: what a page and an index look like, where each
 goes, and how rendered pages are written into a docs site's checkout as
 one version of a project. `docusaurus` is the first,
 `shell/docs/docusaurus.docgen.op.sh`: markdown pages at the module's path
-with `.sh` as `.md`, rendered by the two jq programs under
+with `.sh` as `.md`, rendered by the two awk programs under
 `shell/docs/docusaurus/`, the index at `README.md`, and a snapshot in
 Docusaurus's own versioning layout. Another docs system is another plugin;
 the extraction, the commands and the catalog's job do not change.

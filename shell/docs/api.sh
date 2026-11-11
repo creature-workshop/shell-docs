@@ -20,6 +20,15 @@ and writes a library's reference.
   docs__write docusaurus shell/silt .ops/docs       ->  .ops/docs/shell/silt/get.md ... and .ops/docs/README.md
 MODULE
 
+# CONST: The contract pass, an awk program over the tree shell-tree writes for a source.
+__docs__CONTRACT="$SHELL_DOCS_DIR/shell/docs/contract.awk"
+
+# CONST: The awk library that reads the nodes of a tree, which the contract pass is loaded after.
+__docs__NODES="$SHELL_DOCS_DIR/shell/docs/nodes.awk"
+
+# CONST: The awk library that reads one line of a doc's text, which the contract pass is loaded after.
+__docs__DOC_TEXT="$SHELL_DOCS_DIR/shell/docs/doc_text.awk"
+
 : <<'PUB_FUN'
 Prints the tree of the module at <source>: one JSON document, the module
 node with a node per root function and per documented root constant or
@@ -33,12 +42,20 @@ args:
 PUB_FUN
 docs__tree() {
   __docs__tree__path="${2:-$1}"
-  awk \
+  __docs__tree__source="$(awk \
     -v path="$__docs__tree__path" \
     -f "$SHELL_SCAN_DIR/shell/scan/scan.awk" \
     -f "$SHELL_TREE_DIR/shell/tree/tree.awk" \
-    "$1" \
-    | jq -c -f "$SHELL_DOCS_DIR/shell/docs/contract.jq"  # structs-lint: allow -- the contract pass is a jq program over the lowering's document, not a struct value
+    "$1"
+  )" || return 1
+  @run_awk __docs__tree__module \
+    "$__docs__CONTRACT" \
+    "$__docs__tree__source" \
+    --load "$__docs__NODES" \
+    --load "$__docs__DOC_TEXT" \
+    || return 1
+  @to_json __docs__tree__json "$__docs__tree__module" || return 1
+  println "$__docs__tree__json"
 }
 
 : <<'PUB_FUN'
