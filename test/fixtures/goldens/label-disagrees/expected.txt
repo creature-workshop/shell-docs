@@ -1,4 +1,4 @@
 ## tree fun.sh test/fixtures/goldens/label-disagrees/fun.sh
-!! 5 jq: error (at <stdin>:1): labelled_private: the doc opens on FUN, but the name says public; FUN, CONST and VAR name a member whose name starts with __, and PUB_FUN, PUB_CONST and PUB_VAR one whose name does not
+!! 1 docs: labelled_private: the doc opens on FUN, but the name says public; FUN, CONST and VAR name a member whose name starts with __, and PUB_FUN, PUB_CONST and PUB_VAR one whose name does not
 ## tree pub-fun.sh test/fixtures/goldens/label-disagrees/pub-fun.sh
-!! 5 jq: error (at <stdin>:1): __labelled_public: the doc opens on PUB_FUN, but the name says private; FUN, CONST and VAR name a member whose name starts with __, and PUB_FUN, PUB_CONST and PUB_VAR one whose name does not
+!! 1 docs: __labelled_public: the doc opens on PUB_FUN, but the name says private; FUN, CONST and VAR name a member whose name starts with __, and PUB_FUN, PUB_CONST and PUB_VAR one whose name does not

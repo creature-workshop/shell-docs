@@ -97,7 +97,8 @@ require_system() {
   if @is_true "$(kinds__registered docgen "$SYSTEM")"; then
     return 0
   fi
-  error "snapshot: no docs system named $SYSTEM; the systems are $(@join "$(docs__docgen__names)" ', ')"
+  @join __require_system__names "$(docs__docgen__names)" ', '
+  error "snapshot: no docs system named $SYSTEM; the systems are $__require_system__names"
   exit 1
 }
 

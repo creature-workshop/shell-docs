@@ -217,7 +217,8 @@ project, pipeline and job, for whichever of them no flag gave. A flag
 overrides each.
 FUN
 read_source_declaration() {
-  SOURCE_DECLARATION="$(self__config__get docs '.source' "$(@obj)")"
+  @obj __read_source__none
+  SOURCE_DECLARATION="$(self__config__get docs '.source' "$__read_source__none")"
   SOURCE_PROJECT="$(flag_or_declared "$SOURCE_PROJECT" project)"
   SOURCE_PIPELINE="$(flag_or_declared "$SOURCE_PIPELINE" pipeline)"
   SOURCE_JOB="$(flag_or_declared "$SOURCE_JOB" job)"
@@ -231,7 +232,8 @@ flag_or_declared() {
   if @defined "$1"; then
     println "$1"
   else
-    @get "$SOURCE_DECLARATION" ".$2" ''
+    @get __flag_or_declared__out "$SOURCE_DECLARATION" ".$2" ''
+    println "$__flag_or_declared__out"
   fi
 }
 
@@ -275,11 +277,8 @@ the site's declaration, false otherwise. The pipeline names the run, so
 it alone says that the source is a render job's artifact.
 FUN
 source_pipeline_given() {
-  if @defined "$SOURCE_PIPELINE"; then
-    @true
-  else
-    @false
-  fi
+  @succeeds __source_pipeline_given__out @defined "$SOURCE_PIPELINE"
+  println "$__source_pipeline_given__out"
 }
 
 : <<'FUN'
@@ -288,10 +287,11 @@ too, from a flag or the site's declaration, false otherwise.
 FUN
 source_pipeline_complete() {
   if @defined "$SOURCE_PROJECT" && @defined "$SOURCE_JOB"; then
-    @true
+    @true __source_pipeline_complete__out
   else
-    @false
+    @false __source_pipeline_complete__out
   fi
+  println "$__source_pipeline_complete__out"
 }
 
 : <<'FUN'
@@ -312,12 +312,13 @@ locate_source() {
     exit 1
   fi
   __locate_source__jobs="$(source_pipeline_jobs)" || exit 1
-  __locate_source__job="$(@find is_source_job "$__locate_source__jobs")"
+  @find __locate_source__job is_source_job "$__locate_source__jobs"
   if ! @defined "$__locate_source__job"; then
     error "ingest: no successful job named $SOURCE_JOB in pipeline $SOURCE_PIPELINE of project $SOURCE_PROJECT"
     exit 1
   fi
-  ARTIFACT="$CI_API_V4_URL/projects/$SOURCE_PROJECT/jobs/$(@get "$__locate_source__job" '.id')/artifacts"
+  @get __locate_source__id "$__locate_source__job" '.id'
+  ARTIFACT="$CI_API_V4_URL/projects/$SOURCE_PROJECT/jobs/$__locate_source__id/artifacts"
 }
 
 : <<'FUN'
@@ -325,9 +326,10 @@ Prints the jobs of the source pipeline as the forge lists them, one page of
 up to 100. Fails, saying so, when they cannot be read.
 FUN
 source_pipeline_jobs() {
+  @obj __source_pipeline_jobs__options '.auth' "Bearer $FORGE_ADMIN_TOKEN"
   if ! http__get \
     "$CI_API_V4_URL/projects/$SOURCE_PROJECT/pipelines/$SOURCE_PIPELINE/jobs?per_page=100" \
-    "$(@obj '.auth' "Bearer $FORGE_ADMIN_TOKEN")"; then
+    "$__source_pipeline_jobs__options"; then
     error "ingest: the jobs of pipeline $SOURCE_PIPELINE of project $SOURCE_PROJECT could not be read"
     return 1
   fi
@@ -339,7 +341,9 @@ gave: the test @find runs over the pipeline's jobs, which reports through
 its exit status as @find asks.
 FUN
 is_source_job() {
-  [ "$(@get "$1" '.name')" = "$SOURCE_JOB" ] && [ "$(@get "$1" '.status')" = "success" ]
+  @get __is_source_job__name "$1" '.name'
+  @get __is_source_job__status "$1" '.status'
+  [ "$__is_source_job__name" = "$SOURCE_JOB" ] && [ "$__is_source_job__status" = "success" ]
 }
 
 : <<'FUN'
@@ -409,15 +413,16 @@ read_site() {
   if ! @defined "$SYSTEM"; then
     SYSTEM="$(self__config__get docs '.system' "$DEFAULT_SYSTEM")"
   fi
-  SETTINGS="$(self__config__get docs '.site' "$(@obj)")"
+  @obj __read_site__none
+  SETTINGS="$(self__config__get docs '.site' "$__read_site__none")"
   if ! @defined "$SITE"; then
-    SITE="$(@get "$SETTINGS" '.system' "$DEFAULT_SITE")"
+    @get SITE "$SETTINGS" '.system' "$DEFAULT_SITE"
   fi
   if @defined "$BRANCH"; then
-    SETTINGS="$(@set "$SETTINGS" '.branch' "$BRANCH")"
+    @set SETTINGS "$SETTINGS" '.branch' "$BRANCH"
   fi
   if ! @defined "$TRUNK"; then
-    TRUNK="$(@get "$SETTINGS" '.trunk' '')"
+    @get TRUNK "$SETTINGS" '.trunk' ''
   fi
   if ! @defined "$BOT"; then
     BOT="$(self__config__get bot '.name' '')"
@@ -439,7 +444,8 @@ require_site() {
   if @is_true "$(kinds__registered site "$SITE")"; then
     return 0
   fi
-  error "ingest: no site system named $SITE; the systems are $(@join "$(site__names)" ', ')"
+  @join __require_site__names "$(site__names)" ', '
+  error "ingest: no site system named $SITE; the systems are $__require_site__names"
   exit 1
 }
 

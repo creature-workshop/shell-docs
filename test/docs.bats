@@ -31,6 +31,19 @@ setup() {
   assert_output --partial "\"name\":\"$REPO/test/fixtures/goldens/module/source.sh\""
 }
 
+# Prints the versions list in the file <file>, as one line of JSON.
+versions_in() {
+  @to_json __versions_in__json "$(cat "$1")" || return 1
+  println "$__versions_in__json"
+}
+
+# Prints the versions list of the strata project at the commit the site
+# last fetched, as one line of JSON.
+fetched_versions() {
+  git -C site show FETCH_HEAD:strata_versions.json > "$BATS_TEST_TMPDIR/fetched_versions.json" || return 1
+  versions_in "$BATS_TEST_TMPDIR/fetched_versions.json"
+}
+
 # A library of one module under $BATS_TEST_TMPDIR: the greet fixture as
 # lib/greet.sh, so its page and index name the path shellops' goldens use.
 # Moves into the directory and prints it.
@@ -53,7 +66,8 @@ library_of_greet() {
 }
 
 @test "docgen: docusaurus loads from beside the library, with its summary, and names its page and index paths" {
-  assert_equal "$(@get "$(docs__docgen__names)" '.[0]')" docusaurus
+  @get first_system "$(docs__docgen__names)" '.[0]'
+  assert_equal "$first_system" docusaurus
   run docs__docgen__summary docusaurus
   assert_output --partial "Docusaurus"
   run docs__docgen__page_path docusaurus shell/silt/get.sh
@@ -129,7 +143,7 @@ site_and_pages() {
   assert_success
   assert_output "snapshot strata 0.1.0: 2 files into site"
   assert [ -f site/strata_versioned_docs/version-0.1.0/lib/greet.md ]
-  assert_equal "$(jq -c . site/strata_versions.json)" '["0.1.0"]'
+  assert_equal "$(versions_in site/strata_versions.json)" '["0.1.0"]'
 
   run "$REPO/cli/snapshot" --site site --project strata --as-version 0.1.0 pages
   assert_failure
@@ -139,7 +153,7 @@ site_and_pages() {
   assert_success
   run "$REPO/cli/snapshot" --site site --project strata --as-version main --trunk main pages
   assert_success
-  assert_equal "$(jq -c . site/strata_versions.json)" '["main","0.1.0"]'
+  assert_equal "$(versions_in site/strata_versions.json)" '["main","0.1.0"]'
 }
 
 @test "cli/snapshot: refuses pages with no index for the system, and a missing site, project or version" {
@@ -210,7 +224,7 @@ site_with_origin_and_source() {
   assert_line "ingest strata 0.1.0: put into the repository site"
   git -C site fetch -q origin published
   assert_equal "$(git -C site log -1 --format='%an <%ae> %s' FETCH_HEAD)" "Bot <bot@example.com> docs: strata 0.1.0"
-  assert_equal "$(git -C site show FETCH_HEAD:strata_versions.json | jq -c .)" '["0.1.0"]'
+  assert_equal "$(fetched_versions)" '["0.1.0"]'
   run git -C site cat-file -e FETCH_HEAD:strata_versioned_docs/version-0.1.0/lib/greet.md
   assert_success
 
@@ -223,7 +237,7 @@ site_with_origin_and_source() {
   run "$REPO/cli/ingest" --as-version main source
   assert_success
   git -C site fetch -q origin published
-  assert_equal "$(git -C site show FETCH_HEAD:strata_versions.json | jq -c .)" '["main","0.1.0"]'
+  assert_equal "$(fetched_versions)" '["main","0.1.0"]'
   assert_equal "$(git -C site rev-list --count FETCH_HEAD)" 3
 
   assert_equal "$(git -C site log -1 --format=%s HEAD)" seed
@@ -256,10 +270,10 @@ site_with_origin_and_source() {
   assert [ -f preview/strata_versioned_docs/version-mr-7/lib/greet.md ]
   assert [ -f preview/strata_versioned_docs/version-0.1.0/lib/greet.md ]
   assert [ ! -e preview/.git ]
-  assert_equal "$(jq -c . preview/strata_versions.json)" '["mr-7","0.1.0"]'
+  assert_equal "$(versions_in preview/strata_versions.json)" '["mr-7","0.1.0"]'
 
   git -C site fetch -q origin published
-  assert_equal "$(git -C site show FETCH_HEAD:strata_versions.json | jq -c .)" '["0.1.0"]'
+  assert_equal "$(fetched_versions)" '["0.1.0"]'
   assert_equal "$(git -C site worktree list | wc -l | tr -d ' ')" 1
 }
 

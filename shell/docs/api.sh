@@ -20,6 +20,15 @@ and writes a library's reference.
   docs__write docusaurus shell/silt .ops/docs       ->  .ops/docs/shell/silt/get.md ... and .ops/docs/README.md
 MODULE
 
+# CONST: The contract pass, an awk program over the tree shell-tree writes for a source.
+__docs__CONTRACT="$SHELL_DOCS_DIR/shell/docs/contract.awk"
+
+# CONST: The awk library that reads the nodes of a tree, which the contract pass is loaded after.
+__docs__NODES="$SHELL_DOCS_DIR/shell/docs/nodes.awk"
+
+# CONST: The awk library that reads one line of a doc's text, which the contract pass is loaded after.
+__docs__DOC_TEXT="$SHELL_DOCS_DIR/shell/docs/doc_text.awk"
+
 : <<'PUB_FUN'
 Prints the tree of the module at <source>: one JSON document, the module
 node with a node per root function and per documented root constant or
@@ -33,12 +42,20 @@ args:
 PUB_FUN
 docs__tree() {
   __docs__tree__path="${2:-$1}"
-  awk \
+  __docs__tree__source="$(awk \
     -v path="$__docs__tree__path" \
     -f "$SHELL_SCAN_DIR/shell/scan/scan.awk" \
     -f "$SHELL_TREE_DIR/shell/tree/tree.awk" \
-    "$1" \
-    | jq -c -f "$SHELL_DOCS_DIR/shell/docs/contract.jq"  # structs-lint: allow -- the contract pass is a jq program over the lowering's document, not a struct value
+    "$1"
+  )" || return 1
+  @run_awk __docs__tree__module \
+    "$__docs__CONTRACT" \
+    "$__docs__tree__source" \
+    --load "$__docs__NODES" \
+    --load "$__docs__DOC_TEXT" \
+    || return 1
+  @to_json __docs__tree__json "$__docs__tree__module" || return 1
+  println "$__docs__tree__json"
 }
 
 : <<'PUB_FUN'
@@ -99,13 +116,13 @@ args:
 PUB_FUN
 docs__write() {
   __docs__write__trees="$(mktemp -d)"
-  __docs__write__context="$(@obj \
+  @obj __docs__write__context \
     '.system' "$1" \
     '.library' "$2" \
     '.out' "$3" \
     '.trees' "$__docs__write__trees" \
-    '.source' "${4:-}"
-  )"
+    '.source' "${4:-}" \
+    || return 1
   rm -rf "$3"
   mkdir -p "$3"
   __docs__write_pages "$__docs__write__context"
@@ -122,7 +139,7 @@ args:
   $1  The context ({system, library, out, trees, source})
 FUN
 __docs__write_pages() {
-  __docs__write_pages__library="$(@get "$1" '.library' '')"
+  @get __docs__write_pages__library "$1" '.library' ''
   __docs__write_pages__modules="$(docs__modules "$__docs__write_pages__library")"
   __docs__write_pages__n=0
   while IFS= read -r __docs__write_pages__module; do
@@ -147,10 +164,10 @@ args:
   $3  The module's number in the library's order
 FUN
 __docs__write_page() {
-  __docs__write_page__system="$(@get "$1" '.system' '')"
-  __docs__write_page__out="$(@get "$1" '.out' '')"
-  __docs__write_page__trees="$(@get "$1" '.trees' '')"
-  __docs__write_page__source="$(@get "$1" '.source' '')"
+  @get __docs__write_page__system "$1" '.system' ''
+  @get __docs__write_page__out "$1" '.out' ''
+  @get __docs__write_page__trees "$1" '.trees' ''
+  @get __docs__write_page__source "$1" '.source' ''
   __docs__write_page__tree="$(printf '%s/%06d.tree.json' "$__docs__write_page__trees" "$3")"
   __docs__write_page__page="$__docs__write_page__out/$(docs__docgen__page_path "$__docs__write_page__system" "$2")"
   docs__tree "$2" "$2" > "$__docs__write_page__tree"
